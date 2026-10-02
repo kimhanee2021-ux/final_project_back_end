@@ -1,3 +1,32 @@
 spring:
   application:
     name: final_project_back_end
+  #데이터베이스 연결 설정 - 계정 정보는 .env에서 읽어온다
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    show-sql: true
+    hibernate:
+      # update는 기존 테이블/데이터를 지우지 않고 없는 것만 추가한다
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+#스웨거 UI URL 설정
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+#JWT 토큰 비밀키 및 만료시간 설정
+#-비밀 키는 32자(256bit) 이상이어야 한다 (짧으면 앱 시작 시 JwtService에서 예외 발생)
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  expiration-ms: 3600000 #엑세스 토큰 유효시간(1시간)
+
+#CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
