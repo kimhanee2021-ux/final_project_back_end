@@ -49,4 +49,31 @@ public class JwtService {
         .getPayload();
     return Long.valueOf(claims.getSubject());
   }
+
+  // 액세스 토큰과 별개로, 리다이렉트 왕복(ex. 소셜 계정 연동) 동안만 "누가 요청했는지"를 짧게
+  // 증명하면 되는 흐름에서 쓰는 단기 상태 토큰. 액세스 토큰을 그대로 URL에 노출하지 않기 위해
+  // 발급 시 용도(purpose)와 만료시간을 직접 지정하고, 검증 시 purpose가 다르면 거부한다.
+  public String generateStateToken(Long userId, String purpose, long expirationMs) {
+    Date now = new Date();
+    Date expiry = new Date(now.getTime() + expirationMs);
+    return Jwts.builder()
+        .subject(String.valueOf(userId))
+        .claim("purpose", purpose)
+        .issuedAt(now)
+        .expiration(expiry)
+        .signWith(key)
+        .compact();
+  }
+
+  public Long parseStateToken(String token, String purpose) {
+    Claims claims = Jwts.parser()
+        .verifyWith(key)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
+    if (!purpose.equals(claims.get("purpose", String.class))) {
+      throw new IllegalArgumentException("토큰 용도가 일치하지 않습니다");
+    }
+    return Long.valueOf(claims.getSubject());
+  }
 }
