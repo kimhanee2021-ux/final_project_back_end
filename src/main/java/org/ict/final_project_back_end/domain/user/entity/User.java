@@ -40,6 +40,11 @@ public class User {
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
+  // 스팀 계정 연동 시 채워지는 SteamID64(17자리). 연동 전까지는 null.
+  @Setter
+  @Column(name = "steam_id", unique = true, length = 20)
+  private String steamId;
+
   // ddl-auto로 만든 테이블은 DB 기본값이 없으므로 엔티티 쪽에서 기본값을 채운다
   @Builder.Default
   @Column(name = "created_at", nullable = false, updatable = false)
