@@ -28,6 +28,10 @@ jwt:
   secret-key: ${JWT_SECRET_KEY}
   expiration-ms: 3600000 #엑세스 토큰 유효시간(1시간)
 
+#스팀 Web API 키 (보유 게임 목록 조회에 사용)
+steam:
+  api-key: ${STEAM_API_KEY}
+
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
