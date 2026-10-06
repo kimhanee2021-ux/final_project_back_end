@@ -2,6 +2,7 @@ package org.ict.final_project_back_end.domain.user.service;
 
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
+import org.ict.final_project_back_end.global.constant.SteamUrls;
 import org.ict.final_project_back_end.global.exception.DuplicateSteamIdException;
 import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
 import org.ict.final_project_back_end.global.exception.InvalidSteamAuthException;
@@ -15,6 +16,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_OPENID_ENDPOINT;
+
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -24,13 +27,10 @@ import java.util.regex.Pattern;
 @Service
 public class SteamAuthServiceImpl implements SteamAuthService {
 
-  // 스팀 OpenID 공급자 엔드포인트. 로그인 요청(checkid_setup)과 서명 검증(check_authentication)
-  // 둘 다 이 주소로 보낸다.
-  private static final String STEAM_OPENID_ENDPOINT = "https://steamcommunity.com/openid/login";
-  // claimed_id는 "https://steamcommunity.com/openid/id/76561198000000000" 형태로 오고,
+  // claimed_id는 "https://steamcommunity.com/openid/id/아이디" 형태로 오고,
   // 끝의 17자리 숫자가 바로 우리가 필요한 SteamID64다.
   private static final Pattern STEAM_ID_PATTERN =
-      Pattern.compile("^https://steamcommunity\\.com/openid/id/(\\d{17})$");
+      Pattern.compile("^" + Pattern.quote(SteamUrls.STEAM_COMMUNITY_BASE_URL) + "/openid/id/(\\d{17})$");
   // 연동 흐름(스팀 로그인 페이지 -> 콜백) 왕복에만 쓰는 상태 토큰의 용도 식별자/유효시간.
   private static final String STEAM_LINK_PURPOSE = "steam-link";
   private static final long STEAM_LINK_STATE_EXPIRATION_MS = 5 * 60 * 1000L;
