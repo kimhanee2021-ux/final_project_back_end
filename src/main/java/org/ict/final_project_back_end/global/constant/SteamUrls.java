@@ -9,10 +9,6 @@ public final class SteamUrls {
   public static final String STEAM_OPENID_ENDPOINT = STEAM_COMMUNITY_BASE_URL + "/openid/login";
   // 스팀 Web API 베이스 URL. 보유 게임 목록 조회(IPlayerService) 등에 사용한다.
   public static final String STEAM_API_BASE_URL = "https://api.steampowered.com";
-  // 스팀 전체 앱 목록 조회. 예전의 ISteamApps/GetAppList/v2는 현재 404이므로 IStoreService를 쓴다 (API 키 필요).
-  public static final String STEAM_APP_LIST_URL = STEAM_API_BASE_URL + "/IStoreService/GetAppList/v1/";
-  // 스팀 스토어 상세정보 조회(appdetails). API 키 없이 호출된다.
-  public static final String STEAM_STORE_BASE_URL = "https://store.steampowered.com";
 
   private SteamUrls() {
   }

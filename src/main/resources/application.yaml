@@ -32,11 +32,6 @@ jwt:
 steam:
   api-key: ${STEAM_API_KEY}
 
-#개발용 게임 데이터 시드 개수 (0이면 실행 안 함)
-game:
-  seed:
-    limit: ${GAME_SEED_LIMIT:0}
-
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
