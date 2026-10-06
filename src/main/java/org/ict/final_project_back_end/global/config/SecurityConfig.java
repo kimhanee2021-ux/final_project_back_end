@@ -4,7 +4,6 @@ import org.ict.final_project_back_end.global.security.JwtAuthFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -48,8 +47,6 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             // 로그인/회원가입, 스웨거는 인증 없이 허용
             .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-            // 게임 조회(GET)는 토큰 없이도 허용. 게임 데이터 변경 API가 생기면 이 규칙에 포함되지 않도록 주의
-            .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()
             // 그 외 /api/** 는 반드시 로그인(JWT)이 있어야 접근 가능
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())
