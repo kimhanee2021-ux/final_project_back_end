@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -52,7 +53,7 @@ public class BoardPost {
   private String imageUrl;
 
   @Builder.Default
-  @Column(name = "is_anonymous", nullable = false)
+  @Column(name = "is_anonymous", nullable = false, columnDefinition = "TINYINT(1)")
   private Boolean anonymous = false;
 
   @Builder.Default
@@ -72,4 +73,10 @@ public class BoardPost {
 
   @Column(name = "expires_at")
   private LocalDateTime expiresAt;
+
+  // ddl-auto로 만든 테이블에는 ON UPDATE CURRENT_TIMESTAMP가 없으므로 JPA가 수정 시각을 채운다
+  @PreUpdate
+  void touchUpdatedAt() {
+    this.updatedAt = LocalDateTime.now();
+  }
 }

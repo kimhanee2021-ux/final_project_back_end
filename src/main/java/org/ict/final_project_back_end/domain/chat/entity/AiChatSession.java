@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -43,11 +44,11 @@ public class AiChatSession {
   private String sessionType = "COACHING";
 
   @Builder.Default
-  @Column(name = "is_private", nullable = false)
+  @Column(name = "is_private", nullable = false, columnDefinition = "TINYINT(1)")
   private Boolean privateSession = false;
 
   @Builder.Default
-  @Column(name = "is_active", nullable = false)
+  @Column(name = "is_active", nullable = false, columnDefinition = "TINYINT(1)")
   private Boolean active = true;
 
   // 이전 응답을 이어 받기 위한 AI API의 응답 id
@@ -60,4 +61,10 @@ public class AiChatSession {
 
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
+
+  // ddl-auto로 만든 테이블에는 ON UPDATE CURRENT_TIMESTAMP가 없으므로 JPA가 수정 시각을 채운다
+  @PreUpdate
+  void touchUpdatedAt() {
+    this.updatedAt = LocalDateTime.now();
+  }
 }

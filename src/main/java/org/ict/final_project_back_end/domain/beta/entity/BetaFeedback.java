@@ -34,6 +34,7 @@ public class BetaFeedback {
   @JoinColumn(name = "participation_id", nullable = false, unique = true)
   private TestParticipation participation;
 
+  @Column(columnDefinition = "TINYINT")
   private Integer rating;
 
   @Column(name = "answers_json", columnDefinition = "JSON")

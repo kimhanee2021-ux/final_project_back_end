@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 
 // 유저 아이템 인벤토리. 같은 아이템은 한 번만 보유한다.
 @Entity
-@Table(name = "user_items", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "item_id"}))
+@Table(name = "user_items", uniqueConstraints = @UniqueConstraint(name = "uq_user_item", columnNames = {"user_id", "item_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

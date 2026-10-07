@@ -48,7 +48,7 @@ public class BoardComment {
 
   // 구매고민 QNA 채택 여부
   @Builder.Default
-  @Column(name = "is_accepted", nullable = false)
+  @Column(name = "is_accepted", nullable = false, columnDefinition = "TINYINT(1)")
   private Boolean accepted = false;
 
   @Builder.Default

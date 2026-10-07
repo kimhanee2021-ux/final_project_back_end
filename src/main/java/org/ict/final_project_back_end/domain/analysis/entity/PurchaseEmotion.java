@@ -31,8 +31,9 @@ public class PurchaseEmotion {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  // 설계안의 user_owned_games는 코드상 LibraryGame(library_games)이라 이쪽을 참조한다
   @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "library_game_id", nullable = false, unique = true)
+  @JoinColumn(name = "user_owned_game_id", nullable = false, unique = true)
   private LibraryGame libraryGame;
 
   @Column(nullable = false, length = 20)

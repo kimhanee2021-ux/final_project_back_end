@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 
 // 베타 참여 기록. 한 사용자는 같은 베타 글에 한 번만 참여한다.
 @Entity
-@Table(name = "test_participations", uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "user_id"}))
+@Table(name = "test_participations", uniqueConstraints = @UniqueConstraint(name = "uq_participation", columnNames = {"post_id", "user_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

@@ -21,7 +21,7 @@ import java.time.LocalDate;
 
 // 운세/타로 뽑기. (user_id, draw_date) 유니크로 1일 1회를 DB에서 보장한다.
 @Entity
-@Table(name = "daily_fortune_draws", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "draw_date"}))
+@Table(name = "daily_fortune_draws", uniqueConstraints = @UniqueConstraint(name = "uq_fortune", columnNames = {"user_id", "draw_date"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

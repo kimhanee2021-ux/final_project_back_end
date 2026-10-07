@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 
 // 메시지 의도 태깅
 @Entity
-@Table(name = "ai_chat_message_intents", uniqueConstraints = @UniqueConstraint(columnNames = {"message_id", "intent_tag"}))
+@Table(name = "ai_chat_message_intents", uniqueConstraints = @UniqueConstraint(name = "uq_intent", columnNames = {"message_id", "intent_tag"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

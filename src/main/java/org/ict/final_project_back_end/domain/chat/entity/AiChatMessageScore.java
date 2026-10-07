@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 
 // 메시지 점수 태깅. 메시지 하나에 점수 종류별로 1건.
 @Entity
-@Table(name = "ai_chat_message_scores", uniqueConstraints = @UniqueConstraint(columnNames = {"message_id", "score_type"}))
+@Table(name = "ai_chat_message_scores", uniqueConstraints = @UniqueConstraint(name = "uq_score", columnNames = {"message_id", "score_type"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

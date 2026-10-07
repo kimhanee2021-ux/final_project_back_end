@@ -8,16 +8,13 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
 
 // 장르 다중값(미확정, 개인화 추천 지원용). (app_id, genre) 복합 PK.
 @Entity
 @Table(name = "game_genres")
-@IdClass(GameGenre.Pk.class)
+@IdClass(GameGenreId.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -31,12 +28,4 @@ public class GameGenre {
   @Id
   @Column(length = 50)
   private String genre;
-
-  @NoArgsConstructor
-  @AllArgsConstructor
-  @EqualsAndHashCode
-  public static class Pk implements Serializable {
-    private Long appId;
-    private String genre;
-  }
 }

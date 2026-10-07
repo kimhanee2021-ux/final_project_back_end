@@ -43,7 +43,7 @@ public class Review {
   private User author;
 
   // 1~5
-  @Column(nullable = false)
+  @Column(nullable = false, columnDefinition = "TINYINT")
   private Integer rating;
 
   @Column(length = 20)

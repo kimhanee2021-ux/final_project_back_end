@@ -28,12 +28,13 @@ import java.time.LocalDateTime;
 public class PurchasePlan {
 
   @Id
-  @Column(name = "library_game_id")
-  private Long libraryGameId;
+  @Column(name = "user_owned_game_id")
+  private Long userOwnedGameId;
 
   @MapsId
+  // 설계안의 user_owned_games는 코드상 LibraryGame(library_games)이라 이쪽을 참조한다
   @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "library_game_id")
+  @JoinColumn(name = "user_owned_game_id")
   private LibraryGame libraryGame;
 
   @Builder.Default

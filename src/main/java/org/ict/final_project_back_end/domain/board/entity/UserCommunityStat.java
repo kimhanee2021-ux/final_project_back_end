@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -44,9 +45,15 @@ public class UserCommunityStat {
   private Integer level = 1;
 
   @Builder.Default
-  @Column(name = "is_promoted", nullable = false)
+  @Column(name = "is_promoted", nullable = false, columnDefinition = "TINYINT(1)")
   private Boolean promoted = false;
 
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
+
+  // ddl-auto로 만든 테이블에는 ON UPDATE CURRENT_TIMESTAMP가 없으므로 JPA가 수정 시각을 채운다
+  @PreUpdate
+  void touchUpdatedAt() {
+    this.updatedAt = LocalDateTime.now();
+  }
 }

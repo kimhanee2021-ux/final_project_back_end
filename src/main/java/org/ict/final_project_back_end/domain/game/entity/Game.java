@@ -34,7 +34,7 @@ public class Game {
   @Column(name = "price_info", length = 100)
   private String priceInfo;
 
-  @Column(name = "discount_percent")
+  @Column(name = "discount_percent", columnDefinition = "TINYINT")
   private Integer discountPercent;
 
   @Column(name = "review_count")
