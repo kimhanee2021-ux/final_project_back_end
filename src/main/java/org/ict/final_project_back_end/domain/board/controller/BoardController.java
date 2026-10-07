@@ -1,6 +1,11 @@
 package org.ict.final_project_back_end.domain.board.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
+import org.springframework.web.bind.annotation.RequestParam;
 import java.net.URI;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateRequest;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateResponse;
@@ -34,5 +39,14 @@ public class BoardController {
   @GetMapping("/{id}")
   public BoardPostDetailResponse get(@PathVariable("id") Long id) {
     return service.findPost(id);
+  }
+
+  @GetMapping
+  public BoardPostPageResponse list(
+      @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+      @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size,
+      @RequestParam(name = "category", required = false) @Size(max = 30) String category,
+      @RequestParam(name = "keyword", required = false) @Size(max = 200) String keyword) {
+    return service.listPosts(page, size, category, keyword);
   }
 }

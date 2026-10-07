@@ -11,6 +11,11 @@ import org.ict.final_project_back_end.domain.user.repository.UserRepository;
 import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostSummaryResponse;
+import org.ict.final_project_back_end.domain.board.repository.BoardPostSpecifications;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -42,5 +47,13 @@ public class BoardPostServiceImpl implements BoardPostService {
   public BoardPostDetailResponse findPost(Long postId) {
     BoardPost post = posts.findById(postId).orElseThrow(BoardPostNotFoundException::new);
     return BoardPostDetailResponse.from(post);
+  }
+
+  @Override
+  public BoardPostPageResponse listPosts(int page, int size, String category, String keyword) {
+    var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+    var result = posts.findAll(BoardPostSpecifications.matching(category, keyword), pageable)
+        .map(BoardPostSummaryResponse::from);
+    return BoardPostPageResponse.from(result);
   }
 }

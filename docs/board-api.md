@@ -1,58 +1,31 @@
-# 파이널 게시판 등록·상세 조회 API
+# 파이널 게시판 API
 
-기준: 파이널 백엔드 develop 커밋 1d97114. 기존 JWT 필터와 SecurityConfig, BoardPost의 User 연관관계를 사용한다.
-프런트엔드 변경은 포함하지 않는다.
+기존 파이널 JWT 인증과 BoardPost/User 연관관계를 사용한다. 모든 API는 Authorization: Bearer <JWT>가 필요하다.
 
-## API
+## 제공 기능
 
-두 엔드포인트 모두 기존 정책대로 Authorization: Bearer <JWT>가 필요하다.
+- POST /api/board: 게시글 등록. 201, {"id":123}, Location 헤더 반환.
+- GET /api/board/{id}: 상세 조회. 없는 글은 404.
+- GET /api/board: 목록·페이지 나누기·카테고리 필터·제목/내용 검색.
 
-- POST /api/board: 201 Created, {"id":123}, Location: /api/board/123.
-- GET /api/board/{id}: 상세 응답 DTO, 없는 글은 404.
+목록 예: /api/board?page=0&size=20&category=FREE&keyword=steam
 
-등록 요청 예시:
+page는 0부터 시작한다. 기본 size는 20이며 1~100을 허용한다. category는 최대 30자, keyword는 최대 200자다. 앞뒤 공백은 제거하며 빈 값은 필터를 적용하지 않는다. 검색은 대소문자를 구분하지 않는 부분 일치이며 %, _, 역슬래시도 문자 그대로 검색한다. 카테고리와 검색어는 함께 적용된다.
 
-```json
-{
-  "category": "팀에서_정한_카테고리",
-  "appId": null,
-  "tag": null,
-  "title": "게시글 제목",
-  "content": "게시글 내용",
-  "isAnonymous": false,
-  "expiresAt": null
-}
-```
+최신 작성일, ID 내림차순으로 정렬한다. 응답은 content, page, size, totalElements, totalPages, first, last를 포함한다. 목록 항목은 본문을 제외한 요약이며 익명 글의 authorId는 null이다.
 
-category는 공백 불가·30자 이하, title은 공백 불가·255자 이하, content는 공백 불가, tag는 50자 이하이다.
-isAnonymous는 필수다. 작성자 ID는 요청 본문에서 받지 않고 검증된 JWT로만 결정하며, 실제 User 존재를 확인한다.
-익명 글은 상세 응답의 authorId를 null로 반환한다. Entity를 직접 노출하지 않는다.
-입력 검증 실패는 400과 필드별 errors, 인증 실패는 기존 보안 필터의 401, 없는 글과 없는 작성자는 404다.
+등록 요청은 category, appId, tag, title, content, isAnonymous, expiresAt을 받는다. category는 필수·30자 이하, title은 필수·255자 이하, content와 isAnonymous는 필수, tag는 50자 이하다. 작성자는 JWT로 결정한다.
 
-## 책임과 확장
+## 구조와 검증
 
-- Controller: HTTP 요청·응답과 입력 검증.
-- BoardPostService 인터페이스/구현: 사용자 확인, 저장·조회, 트랜잭션, DTO 반환.
-- BoardPostRepository: JPA 저장소 접근.
-- DTO: 외부 요청·응답 계약.
-- BusinessException과 기존 GlobalExceptionHandler: 업무 오류 응답. 게시판 전용 ValidationHandler: 필드 검증 응답.
+Controller는 HTTP와 입력 검증, Service는 업무 처리와 트랜잭션, Repository와 Specification은 저장·조회 조건, DTO는 응답을 담당한다.
 
-기존 BoardPost Entity와 User의 연관관계, 로그인 코드, 운영 DB 설정은 변경하지 않는다.
+전체 자동 테스트 24개 통과: H2 기반 등록·상세·실제 JWT·독립 커밋 조회와 목록·복합 검색·문자 검색·페이지·잘못된 입력·익명 응답을 검증했다. 기존 등록·상세는 로컬 MySQL에서도 별도로 검증했다. 목록 변경분의 실제 MySQL 검증은 포함하지 않았다.
 
-## 테스트
+## 남은 기능
 
-테스트용 application.yaml과 H2 MySQL mode를 사용한다. 실제 팀 MySQL 또는 Steam API에 접근하지 않는다.
-회원가입·로그인 → 실제 서명 JWT → 등록 API → JPA 저장 → clear 후 조회를 검증한다.
-별도 테스트는 테스트 트랜잭션 없이 등록 요청의 커밋, 독립 JDBC 조회와 별도 GET 요청을 확인한다.
-인증 없음·잘못된 JWT·없는 사용자·없는 글·입력 오류·작성자 조작 방지·익명 응답을 검증한다.
+수정·삭제·댓글·추천·이미지 업로드와 팀 카테고리 허용 목록·관리자 권한 규칙.
 
-## 남은 범위
+## 적용 상태
 
-- 실제 팀 MySQL에서의 스키마 호환성과 저장·조회 검증. H2는 이를 대신하지 않는다.
-- 팀 카테고리 코드 허용 목록과 공지 등 관리자 카테고리 권한 규칙. 현재는 문자열 형식과 길이만 검증한다.
-- 목록·검색·페이징·수정·삭제·댓글·추천·이미지 업로드.
-
-## 작업 위치
-
-D:\git\final_project_back_end의 원본을 수정하지 않고 해당 develop을 복제한 codex/board-api에서 작업했다.
-GitHub 원격 주소는 원본과 같으나 업로드 성공 여부는 별도로 확인해야 한다.
+목록 변경은 원본의 dfdc731을 기준으로 codex/board-list에서 작성했다. 원본 D:\git\final_project_back_end 적용용 Git 패치를 제공하며 GitHub에는 업로드하지 않았다.
