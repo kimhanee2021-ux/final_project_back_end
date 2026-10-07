@@ -8,7 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = BoardController.class)
+@RestControllerAdvice(assignableTypes = {BoardController.class, BoardCommentController.class})
 public class BoardValidationHandler {
   public record ValidationError(String error, Map<String, String> errors) { }
 

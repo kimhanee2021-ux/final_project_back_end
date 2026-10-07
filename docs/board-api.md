@@ -38,3 +38,19 @@ Controller는 HTTP와 입력 검증, Service는 업무 처리와 트랜잭션, R
 
 수정·삭제 통합 테스트 8개를 추가했고 전체 32개가 통과했다. 수정·삭제 변경의 실제 MySQL 검증은 포함하지 않았다.
 원본 목록 커밋 bd6e29e 적용을 확인했으며 이 추가 변경은 별도 패치로 적용한다.
+
+## 댓글 API
+
+기존 JWT 인증이 모든 댓글 API에 필요하다.
+
+- POST /api/board/{postId}/comments: {"content":"댓글"}. 201과 생성된 댓글 DTO·Location 반환. 작성자는 JWT로 결정한다.
+- GET /api/board/{postId}/comments?page=0&size=20: 작성일·ID 오름차순 페이지 목록. size 1~100. 해당 글이 없으면 404.
+- PUT /api/board/{postId}/comments/{commentId}: {"content":"수정"}. 본인 댓글만 수정, 성공 200과 DTO.
+- DELETE /api/board/{postId}/comments/{commentId}: 본인 댓글만 삭제, 성공 204.
+
+본문은 공백 불가·최대 2000자다. DTO는 id, postId, parentId, content, authorId, authorNickname, accepted, createdAt을 포함한다. 페이지 응답은 게시글 목록과 동일한 메타데이터 구조다.
+
+비작성자는 403, 없는 댓글 또는 다른 글에 속한 댓글은 404다. 답글이 연결된 댓글은 409로 삭제를 거절한다. 대댓글 등록·채택·추천·신고 연계는 이번 범위에 포함하지 않는다.
+
+원본 수정·삭제 커밋 32e3fa3 적용을 확인했다. 댓글 변경은 별도 패치이며 실제 MySQL에서의 댓글 검증은 포함하지 않았다.
+댓글 통합 테스트 8개 추가 후 전체 자동 테스트 40개 통과(H2). 코드 정적 리뷰에서 차단 문제 없음.
