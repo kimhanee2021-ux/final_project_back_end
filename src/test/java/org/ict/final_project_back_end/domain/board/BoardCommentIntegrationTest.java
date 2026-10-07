@@ -107,4 +107,40 @@ class BoardCommentIntegrationTest {
     mvc.perform(delete(url + "/" + parent.getId()).header("Authorization", owner)).andExpect(status().isConflict());
     em.clear(); assertNotNull(em.find(BoardComment.class, parent.getId()));
   }
+  @Test void replyPersistsParentAndAppearsInList() throws Exception {
+    var parent = add("부모 댓글");
+    mvc.perform(post(url).header("Authorization", other).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"content\":\"답글\",\"parentId\":" + parent.getId() + "}"))
+        .andExpect(status().isCreated()).andExpect(jsonPath("$.parentId").value(parent.getId()));
+    em.clear();
+    var reply = em.createQuery("select c from BoardComment c where c.parent.id = :id", BoardComment.class)
+        .setParameter("id", parent.getId()).getSingleResult();
+    assertEquals("답글", reply.getContent()); assertNotEquals(author.getId(), reply.getAuthor().getId());
+    mvc.perform(get(url).header("Authorization", owner))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.content[1].parentId").value(parent.getId()));
+    mvc.perform(delete(url + "/" + reply.getId()).header("Authorization", owner)).andExpect(status().isForbidden());
+    mvc.perform(delete(url + "/" + reply.getId()).header("Authorization", other)).andExpect(status().isNoContent());
+  }
+  @Test void missingOrDifferentPostParentIsRejected() throws Exception {
+    mvc.perform(post(url).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"content\":\"답글\",\"parentId\":9223372036854775807}"))
+        .andExpect(status().isNotFound());
+    var p2 = posts.saveAndFlush(BoardPost.builder().category("A").title("별도").content("본문").author(author).build());
+    var foreign = BoardComment.builder().post(p2).author(author).content("다른 글 댓글").build();
+    em.persist(foreign); em.flush();
+    mvc.perform(post(url).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"content\":\"답글\",\"parentId\":" + foreign.getId() + "}"))
+        .andExpect(status().isNotFound());
+  }
+  @Test void replyDepthAndInvalidParentAreRejected() throws Exception {
+    var parent = add("부모");
+    var reply = BoardComment.builder().post(post).author(author).parent(parent).content("답글").build();
+    em.persist(reply); em.flush();
+    mvc.perform(post(url).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"content\":\"중첩 답글\",\"parentId\":" + reply.getId() + "}"))
+        .andExpect(status().isBadRequest());
+    mvc.perform(post(url).header("Authorization", owner).contentType(MediaType.APPLICATION_JSON)
+        .content("{\"content\":\"답글\",\"parentId\":0}"))
+        .andExpect(status().isBadRequest());
+  }
 }

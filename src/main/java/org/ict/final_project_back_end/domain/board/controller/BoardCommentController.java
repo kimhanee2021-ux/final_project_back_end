@@ -16,7 +16,7 @@ public class BoardCommentController {
   public BoardCommentController(BoardCommentService service) { this.service = service; }
   @PostMapping
   public ResponseEntity<BoardCommentResponse> create(@AuthenticationPrincipal Long userId,
-      @PathVariable("postId") Long postId, @Valid @RequestBody BoardCommentRequest request) {
+      @PathVariable("postId") Long postId, @Valid @RequestBody BoardCommentCreateRequest request) {
     var response = service.create(userId, postId, request);
     return ResponseEntity.created(URI.create("/api/board/" + postId + "/comments/" + response.id())).body(response);
   }

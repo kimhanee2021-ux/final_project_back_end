@@ -25,11 +25,17 @@ public class BoardCommentServiceImpl implements BoardCommentService {
   }
   @Override
   @Transactional
-  public BoardCommentResponse create(Long userId, Long postId, BoardCommentRequest request) {
+  public BoardCommentResponse create(Long userId, Long postId, BoardCommentCreateRequest request) {
     requireLogin(userId);
     var post = posts.findById(postId).orElseThrow(BoardPostNotFoundException::new);
     var author = users.findById(userId).orElseThrow(UserNotFoundException::new);
-    var comment = BoardComment.builder().post(post).author(author).content(request.content()).build();
+    BoardComment parent = null;
+    if (request.parentId() != null) {
+      parent = comments.findByIdAndPostId(request.parentId(), postId)
+          .orElseThrow(BoardCommentNotFoundException::new);
+      if (parent.getParent() != null) throw new BoardReplyDepthException();
+    }
+    var comment = BoardComment.builder().post(post).author(author).parent(parent).content(request.content()).build();
     return BoardCommentResponse.from(comments.save(comment));
   }
   @Override
