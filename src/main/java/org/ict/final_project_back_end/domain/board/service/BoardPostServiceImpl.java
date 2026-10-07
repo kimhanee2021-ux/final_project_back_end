@@ -23,10 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoardPostServiceImpl implements BoardPostService {
   private final BoardPostRepository posts;
   private final UserRepository users;
+  private final org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository interactions;
 
-  public BoardPostServiceImpl(BoardPostRepository posts, UserRepository users) {
+  public BoardPostServiceImpl(BoardPostRepository posts, UserRepository users, org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository interactions) {
     this.posts = posts;
     this.users = users;
+    this.interactions = interactions;
   }
 
   @Override
@@ -75,6 +77,7 @@ public class BoardPostServiceImpl implements BoardPostService {
     if (posts.countComments(postId) > 0 || posts.countImages(postId) > 0) {
       throw new org.ict.final_project_back_end.domain.board.exception.BoardPostConflictException();
     }
+    interactions.deleteByTargetTypeAndTargetId(BoardLikeServiceImpl.TARGET_TYPE, postId);
     posts.delete(post);
     posts.flush();
   }
@@ -83,7 +86,7 @@ public class BoardPostServiceImpl implements BoardPostService {
     if (userId == null || userId <= 0) {
       throw new InvalidCredentialsException("로그인이 필요합니다.");
     }
-    BoardPost post = posts.findById(postId).orElseThrow(BoardPostNotFoundException::new);
+    BoardPost post = posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
     if (!post.getAuthor().getId().equals(userId)) {
       throw new org.ict.final_project_back_end.domain.board.exception.BoardPostForbiddenException();
     }
