@@ -1,80 +1,66 @@
-# 파이널 게시판 API
+# 파이널 게시판 백엔드 API
 
-기존 파이널 JWT 인증과 BoardPost/User 연관관계를 사용한다. 모든 API는 Authorization: Bearer <JWT>가 필요하다.
+기존 파이널 JWT 인증과 BoardPost/User 모델을 사용한다. 모든 API는 Authorization: Bearer <JWT>가 필요하다. Controller는 HTTP, Service는 권한·업무·트랜잭션, Repository는 DB 접근, DTO는 외부 계약을 담당한다.
 
-## 제공 기능
+## 게시글
 
-- POST /api/board: 게시글 등록. 201, {"id":123}, Location 헤더 반환.
-- GET /api/board/{id}: 상세 조회. 없는 글은 404.
-- GET /api/board: 목록·페이지 나누기·카테고리 필터·제목/내용 검색.
+- POST /api/board: 등록. 201과 {"id":123}, Location 반환.
+- GET /api/board/{id}: 상세. 없는 글은 404.
+- GET /api/board?page=0&size=20&category=FREE&keyword=steam: 최신 작성일·ID 내림차순 목록.
+- PUT /api/board/{id}: 본인 글 전체 수정, 200과 상세 DTO.
+- DELETE /api/board/{id}: 본인 글 삭제, 204. 댓글 또는 이미지가 연결되면 409. 해당 글의 BOARD_POST 상호작용만 정리한다.
 
-목록 예: /api/board?page=0&size=20&category=FREE&keyword=steam
+등록·수정 필드: category(필수·30자), appId, tag(50자), title(필수·255자), content(필수), isAnonymous(필수), expiresAt. 작성자는 JWT에서 결정하며 작성일·조회수·대표 이미지는 해당 요청으로 바꾸지 않는다.
 
-page는 0부터 시작한다. 기본 size는 20이며 1~100을 허용한다. category는 최대 30자, keyword는 최대 200자다. 앞뒤 공백은 제거하며 빈 값은 필터를 적용하지 않는다. 검색은 대소문자를 구분하지 않는 부분 일치이며 %, _, 역슬래시도 문자 그대로 검색한다. 카테고리와 검색어는 함께 적용된다.
+목록은 page 0부터, size 기본20·최대100. category 최대30자, keyword 최대200자. 공백 필터는 무시한다. 검색어는 제목 또는 본문에 대소문자 구분 없이 부분 일치하며 %, _, 역슬래시는 문자 그대로 검색한다. 카테고리와 검색은 함께 적용된다.
 
-최신 작성일, ID 내림차순으로 정렬한다. 응답은 content, page, size, totalElements, totalPages, first, last를 포함한다. 목록 항목은 본문을 제외한 요약이며 익명 글의 authorId는 null이다.
+페이지 응답: content, page, size, totalElements, totalPages, first, last. 목록 항목은 본문을 제외한다. 익명 글의 authorId는 null이다.
 
-등록 요청은 category, appId, tag, title, content, isAnonymous, expiresAt을 받는다. category는 필수·30자 이하, title은 필수·255자 이하, content와 isAnonymous는 필수, tag는 50자 이하다. 작성자는 JWT로 결정한다.
+## 댓글·대댓글
 
-## 구조와 검증
+- POST /api/board/{postId}/comments: {"content":"댓글","parentId":null}, 201과 DTO·Location.
+- GET /api/board/{postId}/comments?page=0&size=20: 작성일·ID 오름차순 페이지 목록, size 최대100.
+- PUT /api/board/{postId}/comments/{commentId}: {"content":"수정"}, 본인만 수정, 200과 DTO.
+- DELETE /api/board/{postId}/comments/{commentId}: 본인만 삭제, 204. 답글이 있으면 409.
 
-Controller는 HTTP와 입력 검증, Service는 업무 처리와 트랜잭션, Repository와 Specification은 저장·조회 조건, DTO는 응답을 담당한다.
+본문은 필수·최대2000자. parentId를 생략하면 일반 댓글이다. 같은 게시글의 최상위 댓글에만 답글을 달 수 있다. 없는 부모·다른 글 부모는 404, 대댓글을 부모로 지정하거나 0 이하 ID는 400이다. 수정으로 부모를 변경할 수 없다.
 
-전체 자동 테스트 24개 통과: H2 기반 등록·상세·실제 JWT·독립 커밋 조회와 목록·복합 검색·문자 검색·페이지·잘못된 입력·익명 응답을 검증했다. 기존 등록·상세는 로컬 MySQL에서도 별도로 검증했다. 목록 변경분의 실제 MySQL 검증은 포함하지 않았다.
+댓글 DTO: id, postId, parentId, content, authorId, authorNickname, accepted, createdAt.
 
-## 남은 기능
+## 추천
 
-수정·삭제·댓글·추천·이미지 업로드와 팀 카테고리 허용 목록·관리자 권한 규칙.
+- PUT /api/board/{postId}/likes: 내 추천 등록. 중복 요청은 그대로 유지한다.
+- DELETE /api/board/{postId}/likes: 내 추천 취소. 이미 취소한 요청도 동일하게 처리한다.
+- GET /api/board/{postId}/likes: 추천 수와 내 추천 여부.
 
-## 적용 상태
+응답은 200과 {"postId":123,"likeCount":1,"liked":true}. 본인 글 추천도 허용한다. ContentInteraction 대상 코드는 BOARD_POST, 동작 코드는 LIKE다. 추천 변경과 글 삭제는 게시글 행 잠금을 사용한다.
 
-목록 변경은 원본의 dfdc731을 기준으로 codex/board-list에서 작성했다. 원본 D:\git\final_project_back_end 적용용 Git 패치를 제공하며 GitHub에는 업로드하지 않았다.
+## 이미지·대표 이미지 선택
 
-## 수정·삭제 추가
+- POST /api/board/{postId}/images: multipart/form-data의 file 필드, 한 번에 한 장. 작성자만 가능. 201과 {"id":1,"url":"/api/board/.../images/files/<uuid>.png","sortOrder":0}.
+- GET /api/board/{postId}/images: 업로드 순서의 이미지 메타데이터 목록.
+- GET /api/board/{postId}/images/files/{key}: JWT 인증 후 원본 이미지 조회.
+- PUT /api/board/{postId}/images/{imageId}/cover: 작성자가 대표 이미지를 선택한다. 200과 선택된 이미지 DTO.
+- DELETE /api/board/{postId}/images/{imageId}: 작성자만 삭제, 204.
 
-- PUT /api/board/{id}: 등록과 같은 필드의 전체 교체 요청. 성공 시 200과 수정된 상세 응답. 작성자·작성일·이미지·조회수는 요청으로 변경하지 않는다.
-- DELETE /api/board/{id}: 작성자만 삭제 가능. 성공 시 204. 없는 글은 404, 다른 작성자는 403, 인증 없음은 401.
-- 댓글 또는 이미지가 연결된 글은 409로 삭제를 거절한다. 연관 데이터의 삭제 정책과 추천·신고 대상 코드 정리는 해당 기능 구현 시 확정한다.
+게임 스크린샷을 고려해 JPG·PNG 파일당20MiB, 최대4천만 화소, 글당10장까지 허용한다. 이미지 헤더와 실제 디코딩을 검사한다. 원본 바이트를 유지하며 리사이즈·재압축하지 않는다. 4K·8K 해상도도 화소수와 파일 크기 제한 안에서 허용한다.
 
-수정·삭제 통합 테스트 8개를 추가했고 전체 32개가 통과했다. 수정·삭제 변경의 실제 MySQL 검증은 포함하지 않았다.
-원본 목록 커밋 bd6e29e 적용을 확인했으며 이 추가 변경은 별도 패치로 적용한다.
+첫 업로드는 기본 대표가 된다. 사용자가 원하는 이미지로 언제든 변경할 수 있다. 다른 이미지를 삭제해도 대표는 유지하며, 대표를 삭제하면 남은 첫 이미지로 바뀐다. 모두 삭제하면 대표는 null이다. 업로드 한도 초과는 409, 잘못된 파일은 400이다. 실제 HTTP의 multipart 용량 초과는 프레임워크가 413으로 처리할 수 있다.
 
-## 댓글 API
+파일 이름은 원본 이름 대신 UUID를 사용한다. DB 트랜잭션 롤백 시 신규 파일을 정리하고, 이미지 삭제 커밋 후 파일을 정리한다. 파일 정리 실패는 로그에 기록한다. DB와 파일 시스템 간 장애 복구를 위한 영속 작업 큐는 이번 범위에 포함하지 않는다.
 
-기존 JWT 인증이 모든 댓글 API에 필요하다.
+저장은 BoardImageStorage 인터페이스로 분리했다. 현재 구현은 로컬 폴더다. BOARD_IMAGE_DIRECTORY 환경 변수로 경로를 지정하고 기본값은 ./uploads/board이다. 배포에서는 이 경로를 영속 볼륨에 연결해야 한다. 여러 서버에서 공유하는 저장소나 S3 연결은 별도 설정·구현이 필요하다.
 
-- POST /api/board/{postId}/comments: {"content":"댓글"}. 201과 생성된 댓글 DTO·Location 반환. 작성자는 JWT로 결정한다.
-- GET /api/board/{postId}/comments?page=0&size=20: 작성일·ID 오름차순 페이지 목록. size 1~100. 해당 글이 없으면 404.
-- PUT /api/board/{postId}/comments/{commentId}: {"content":"수정"}. 본인 댓글만 수정, 성공 200과 DTO.
-- DELETE /api/board/{postId}/comments/{commentId}: 본인 댓글만 삭제, 성공 204.
+이미지 조회도 JWT 헤더가 필요하므로 프런트엔드에서는 인증된 fetch 후 Blob URL로 표시할 수 있다. URL에 토큰을 넣지 않는다. 프런트엔드 변경은 포함하지 않았다.
 
-본문은 공백 불가·최대 2000자다. DTO는 id, postId, parentId, content, authorId, authorNickname, accepted, createdAt을 포함한다. 페이지 응답은 게시글 목록과 동일한 메타데이터 구조다.
+## 검증과 적용 상태
 
-비작성자는 403, 없는 댓글 또는 다른 글에 속한 댓글은 404다. 답글이 연결된 댓글은 409로 삭제를 거절한다. 대댓글 등록·채택·추천·신고 연계는 이번 범위에 포함하지 않는다.
+전체 자동 테스트 57개 통과(H2). 이미지 테스트는 임시 폴더에서 실제 파일 저장·조회·삭제·롤백 정리·4K 원본 유지·대표 선택과 삭제 후 대체를 확인했다. 정적 리뷰에서도 차단 문제는 발견되지 않았다.
 
-원본 수정·삭제 커밋 32e3fa3 적용을 확인했다. 댓글 변경은 별도 패치이며 실제 MySQL에서의 댓글 검증은 포함하지 않았다.
-댓글 통합 테스트 8개 추가 후 전체 자동 테스트 40개 통과(H2). 코드 정적 리뷰에서 차단 문제 없음.
+기존 게시글 등록·상세는 로컬 MySQL에서 검증했다. 이후 기능의 실제 MySQL 및 추천 동시 요청 검증은 포함하지 않았다.
 
-## 대댓글 추가
+원본 D:\git\final_project_back_end의 추천 커밋 7749d3f까지 적용을 확인했다. 이미지 변경은 별도 패치로 제공한다. GitHub 업로드는 하지 않았다.
 
-댓글 등록 요청에 선택 필드 parentId를 추가했다. 예: {"content":"답글","parentId":123}. 생략 또는 null이면 일반 댓글이다. 수정 요청은 기존 content 전용 DTO로 유지하여 부모를 바꿀 수 없다.
+## 남은 범위
 
-같은 게시글의 최상위 댓글에만 대댓글을 등록할 수 있다. 없는 부모·다른 글의 부모는 404, 대댓글을 부모로 지정하면 400, 0 이하 ID는 400이다. 목록은 기존 오래된 순 페이지와 parentId를 유지한다. 대댓글의 수정·삭제도 본인만 가능하다. 답글이 있는 부모 삭제는 기존 409 정책을 유지한다.
-
-원본 댓글 커밋 89e595a 적용을 확인했다. 실제 MySQL 대댓글 검증은 포함하지 않았다.
-대댓글 통합 테스트 3개 추가 후 전체 자동 테스트 43개 통과(H2). 정적 리뷰 차단 문제 없음.
-
-## 게시글 추천 API
-
-기존 ContentInteraction을 사용하며 대상 코드는 BOARD_POST, 동작 코드는 LIKE다. 모든 요청은 기존 JWT 인증이 필요하다.
-
-- PUT /api/board/{postId}/likes: 내 추천을 등록한다. 이미 추천했으면 그대로 유지한다.
-- DELETE /api/board/{postId}/likes: 내 추천을 취소한다. 이미 취소했으면 그대로 유지한다.
-- GET /api/board/{postId}/likes: 추천 수와 내 추천 여부를 조회한다.
-
-세 API는 200과 {"postId":123,"likeCount":1,"liked":true} 형태를 반환한다. 없는 글은 404다. 본인 글 추천도 허용한다.
-
-추천 변경과 글 삭제는 게시글 행 잠금으로 순서를 보장한다. 기존 유일성 제약도 유지한다. 글 삭제 시 BOARD_POST 대상의 상호작용만 정리하며 다른 종류의 같은 ID 기록은 유지한다. 댓글 추천은 이번 범위에 포함하지 않는다.
-
-원본 대댓글 커밋 3905236 적용을 확인했다. 실제 MySQL 추천 동시 요청 검증은 포함하지 않았다.
-추천 통합 테스트 4개 추가 후 전체 자동 테스트 47개 통과(H2), 실패·오류 0. 정적 리뷰 차단 문제 없음.
+팀 카테고리 코드·관리자 권한 규칙, 댓글 채택·댓글 추천·신고 연계, 프런트엔드 연결과 실제 배포 저장소 설정.

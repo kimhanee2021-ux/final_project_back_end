@@ -90,4 +90,8 @@ public class BoardPost {
     this.anonymous = anonymous;
     this.expiresAt = expiresAt;
   }
+
+  public void selectImage(String imageUrl) {
+    this.imageUrl = imageUrl;
+  }
 }

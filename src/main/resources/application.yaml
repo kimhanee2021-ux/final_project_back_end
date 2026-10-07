@@ -1,6 +1,10 @@
 server:
   port: 8080
 spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
   application:
     name: final_project_back_end
   datasource:
@@ -35,3 +39,7 @@ steam:
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+
+board:
+  images:
+    directory: ${BOARD_IMAGE_DIRECTORY:./uploads/board}
