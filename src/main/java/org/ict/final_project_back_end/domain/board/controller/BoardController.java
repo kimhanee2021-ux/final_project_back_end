@@ -49,4 +49,17 @@ public class BoardController {
       @RequestParam(name = "keyword", required = false) @Size(max = 200) String keyword) {
     return service.listPosts(page, size, category, keyword);
   }
+
+  @org.springframework.web.bind.annotation.PutMapping("/{id}")
+  public BoardPostDetailResponse update(@AuthenticationPrincipal Long userId,
+      @PathVariable("id") Long id,
+      @Valid @RequestBody org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
+    return service.updatePost(userId, id, request);
+  }
+
+  @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(@AuthenticationPrincipal Long userId, @PathVariable("id") Long id) {
+    service.deletePost(userId, id);
+    return ResponseEntity.noContent().build();
+  }
 }

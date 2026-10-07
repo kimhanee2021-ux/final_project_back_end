@@ -56,4 +56,37 @@ public class BoardPostServiceImpl implements BoardPostService {
         .map(BoardPostSummaryResponse::from);
     return BoardPostPageResponse.from(result);
   }
+
+  @Override
+  @Transactional
+  public BoardPostDetailResponse updatePost(Long userId, Long postId,
+      org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
+    BoardPost post = ownedPost(userId, postId);
+    post.update(request.category(), request.appId(), request.tag(), request.title(),
+        request.content(), request.isAnonymous(), request.expiresAt());
+    posts.flush();
+    return BoardPostDetailResponse.from(post);
+  }
+
+  @Override
+  @Transactional
+  public void deletePost(Long userId, Long postId) {
+    BoardPost post = ownedPost(userId, postId);
+    if (posts.countComments(postId) > 0 || posts.countImages(postId) > 0) {
+      throw new org.ict.final_project_back_end.domain.board.exception.BoardPostConflictException();
+    }
+    posts.delete(post);
+    posts.flush();
+  }
+
+  private BoardPost ownedPost(Long userId, Long postId) {
+    if (userId == null || userId <= 0) {
+      throw new InvalidCredentialsException("로그인이 필요합니다.");
+    }
+    BoardPost post = posts.findById(postId).orElseThrow(BoardPostNotFoundException::new);
+    if (!post.getAuthor().getId().equals(userId)) {
+      throw new org.ict.final_project_back_end.domain.board.exception.BoardPostForbiddenException();
+    }
+    return post;
+  }
 }
