@@ -5,6 +5,6 @@ import org.springframework.http.HttpStatus;
 public class DuplicateNicknameException extends BusinessException {
 
   public DuplicateNicknameException() {
-    super(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다");
+    super(HttpStatus.CONFLICT, "DUPLICATE_NICKNAME", "이미 사용 중인 닉네임입니다");
   }
 }

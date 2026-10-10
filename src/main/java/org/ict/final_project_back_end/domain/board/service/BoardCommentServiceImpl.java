@@ -5,7 +5,7 @@ import org.ict.final_project_back_end.domain.board.exception.*;
 import org.ict.final_project_back_end.domain.board.repository.BoardCommentRepository;
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -67,6 +67,6 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     return comment;
   }
   private void requireLogin(Long userId) {
-    if (userId == null || userId <= 0) throw new InvalidCredentialsException("로그인이 필요합니다.");
+    if (userId == null || userId <= 0) throw new AuthenticationRequiredException();
   }
 }

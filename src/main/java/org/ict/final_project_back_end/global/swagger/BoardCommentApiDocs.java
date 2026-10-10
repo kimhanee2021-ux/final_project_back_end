@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.ict.final_project_back_end.domain.board.dto.BoardCommentCreateRequest;
@@ -40,7 +41,7 @@ public interface BoardCommentApiDocs {
       @Parameter(description = "게시글 ID", required = true, example = "1")
       Long postId,
       @RequestBody(description = "댓글 작성 정보(parentId를 지정하면 답글)", required = true)
-      BoardCommentCreateRequest request
+      @Valid BoardCommentCreateRequest request
   );
 
   @Operation(
@@ -82,7 +83,7 @@ public interface BoardCommentApiDocs {
       @Parameter(description = "댓글 ID", required = true, example = "10")
       Long commentId,
       @RequestBody(description = "수정할 댓글 내용", required = true)
-      BoardCommentRequest request
+      @Valid BoardCommentRequest request
   );
 
   @Operation(

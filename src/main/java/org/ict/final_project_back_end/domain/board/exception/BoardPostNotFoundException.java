@@ -5,6 +5,6 @@ import org.springframework.http.HttpStatus;
 
 public class BoardPostNotFoundException extends BusinessException {
   public BoardPostNotFoundException() {
-    super(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+    super(HttpStatus.NOT_FOUND, "BOARD_POST_NOT_FOUND", "게시글을 찾을 수 없습니다.");
   }
 }

@@ -1,6 +1,5 @@
 package org.ict.final_project_back_end.domain.board.controller;
 
-import jakarta.validation.Valid;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
 import org.springframework.web.bind.annotation.RequestParam;
 import java.net.URI;
@@ -32,7 +31,7 @@ public class BoardController implements BoardApiDocs {
   @Override
   @PostMapping
   public ResponseEntity<BoardPostCreateResponse> create(@AuthenticationPrincipal Long userId,
-      @Valid @RequestBody BoardPostCreateRequest request) {
+      @RequestBody BoardPostCreateRequest request) {
     BoardPostCreateResponse response = service.createPost(userId, request);
     return ResponseEntity.created(URI.create("/api/board/" + response.id())).body(response);
   }
@@ -57,7 +56,7 @@ public class BoardController implements BoardApiDocs {
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
   public ResponseEntity<BoardPostDetailResponse> update(@AuthenticationPrincipal Long userId,
       @PathVariable("id") Long id,
-      @Valid @RequestBody org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
+      @RequestBody org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
     return ResponseEntity.ok(service.updatePost(userId, id, request));
   }
 

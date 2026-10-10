@@ -6,6 +6,6 @@ import org.springframework.http.HttpStatus;
 public class SteamApiException extends BusinessException {
 
   public SteamApiException() {
-    super(HttpStatus.BAD_GATEWAY, "스팀 API 호출에 실패했습니다");
+    super(HttpStatus.BAD_GATEWAY, "STEAM_API_ERROR", "스팀 API 호출에 실패했습니다");
   }
 }

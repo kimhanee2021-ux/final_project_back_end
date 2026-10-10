@@ -5,7 +5,7 @@ import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundEx
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +57,6 @@ public class BoardLikeServiceImpl implements BoardLikeService {
     return new BoardLikeResponse(postId, count, liked);
   }
   private void requireLogin(Long userId) {
-    if (userId == null || userId <= 0) throw new InvalidCredentialsException("로그인이 필요합니다.");
+    if (userId == null || userId <= 0) throw new AuthenticationRequiredException();
   }
 }

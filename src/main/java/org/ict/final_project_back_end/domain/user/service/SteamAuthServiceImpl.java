@@ -50,7 +50,7 @@ public class SteamAuthServiceImpl implements SteamAuthService {
     try {
       userId = jwtService.parseUserId(accessToken);
     } catch (Exception e) {
-      throw new InvalidCredentialsException("유효하지 않거나 만료된 토큰입니다");
+      throw new InvalidCredentialsException(InvalidCredentialsException.INVALID_CREDENTIALS, "유효하지 않거나 만료된 토큰입니다");
     }
     String state = jwtService.generateStateToken(userId, STEAM_LINK_PURPOSE, STEAM_LINK_STATE_EXPIRATION_MS);
 

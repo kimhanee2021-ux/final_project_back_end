@@ -8,7 +8,7 @@ import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundEx
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
@@ -35,7 +35,7 @@ public class BoardPostServiceImpl implements BoardPostService {
   @Transactional
   public BoardPostCreateResponse createPost(Long authenticatedUserId, BoardPostCreateRequest request) {
     if (authenticatedUserId == null || authenticatedUserId <= 0) {
-      throw new InvalidCredentialsException("로그인이 필요합니다.");
+      throw new AuthenticationRequiredException();
     }
     User author = users.findById(authenticatedUserId).orElseThrow(UserNotFoundException::new);
     BoardPost post = BoardPost.builder()
@@ -84,7 +84,7 @@ public class BoardPostServiceImpl implements BoardPostService {
 
   private BoardPost ownedPost(Long userId, Long postId) {
     if (userId == null || userId <= 0) {
-      throw new InvalidCredentialsException("로그인이 필요합니다.");
+      throw new AuthenticationRequiredException();
     }
     BoardPost post = posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
     if (!post.getAuthor().getId().equals(userId)) {

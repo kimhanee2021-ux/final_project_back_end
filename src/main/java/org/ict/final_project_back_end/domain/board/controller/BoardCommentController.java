@@ -1,6 +1,5 @@
 package org.ict.final_project_back_end.domain.board.controller;
 import java.net.URI;
-import jakarta.validation.Valid;
 import org.ict.final_project_back_end.domain.board.dto.*;
 import org.ict.final_project_back_end.domain.board.service.BoardCommentService;
 import org.ict.final_project_back_end.global.swagger.BoardCommentApiDocs;
@@ -18,7 +17,7 @@ public class BoardCommentController implements BoardCommentApiDocs {
   @Override
   @PostMapping
   public ResponseEntity<BoardCommentResponse> create(@AuthenticationPrincipal Long userId,
-      @PathVariable("postId") Long postId, @Valid @RequestBody BoardCommentCreateRequest request) {
+      @PathVariable("postId") Long postId, @RequestBody BoardCommentCreateRequest request) {
     var response = service.create(userId, postId, request);
     return ResponseEntity.created(URI.create("/api/board/" + postId + "/comments/" + response.id())).body(response);
   }
@@ -33,7 +32,7 @@ public class BoardCommentController implements BoardCommentApiDocs {
   @PutMapping("/{commentId}")
   public ResponseEntity<BoardCommentResponse> update(@AuthenticationPrincipal Long userId,
       @PathVariable("postId") Long postId, @PathVariable("commentId") Long commentId,
-      @Valid @RequestBody BoardCommentRequest request) {
+      @RequestBody BoardCommentRequest request) {
     return ResponseEntity.ok(service.update(userId, postId, commentId, request));
   }
   @Override

@@ -8,7 +8,7 @@ import org.ict.final_project_back_end.domain.board.repository.BoardPostRepositor
 import org.ict.final_project_back_end.domain.board.repository.BoardPostImageRepository;
 import org.ict.final_project_back_end.domain.board.storage.BoardImageStorage;
 import org.ict.final_project_back_end.domain.board.storage.BoardImageValidator;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -33,7 +33,7 @@ public class BoardImageServiceImpl implements BoardImageService {
   public BoardImageResponse upload(Long userId, Long postId, MultipartFile file) {
     var post=ownedPost(userId, postId);
     var existing=images.findByPostIdOrderBySortOrderAscIdAsc(postId);
-    if(existing.size() >= 10) throw new BoardImageException(HttpStatus.CONFLICT,"이미지는 글당 최대 10장까지 업로드할 수 있습니다.");
+    if(existing.size() >= 10) throw new BoardImageException(HttpStatus.CONFLICT,"BOARD_IMAGE_LIMIT_EXCEEDED","이미지는 글당 최대 10장까지 업로드할 수 있습니다.");
     var validated=validator.validate(file);
     String key=storage.save(validated.bytes(), validated.extension());
     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -77,12 +77,12 @@ public class BoardImageServiceImpl implements BoardImageService {
     });
   }
   private BoardPost ownedPost(Long userId,Long postId) {
-    if(userId==null || userId<=0) throw new InvalidCredentialsException("로그인이 필요합니다.");
+    if(userId==null || userId<=0) throw new AuthenticationRequiredException();
     var post=posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
     if(!post.getAuthor().getId().equals(userId)) throw new BoardPostForbiddenException();
     return post;
   }
-  private BoardImageException missingImage() { return new BoardImageException(HttpStatus.NOT_FOUND,"이미지를 찾을 수 없습니다."); }
+  private BoardImageException missingImage() { return new BoardImageException(HttpStatus.NOT_FOUND,"BOARD_IMAGE_NOT_FOUND","이미지를 찾을 수 없습니다."); }
   private String url(Long postId,String key) { return "/api/board/"+postId+"/images/files/"+key; }
   private void cleanup(String key) {
     try { storage.delete(key); }

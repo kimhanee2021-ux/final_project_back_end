@@ -61,7 +61,7 @@ public class UserServiceImpl implements UserService {
         throw new InvalidRequestException("현재 비밀번호를 입력해주세요");
       }
       if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-        throw new InvalidCredentialsException("현재 비밀번호가 일치하지 않습니다");
+        throw new InvalidCredentialsException(InvalidCredentialsException.INVALID_CREDENTIALS, "현재 비밀번호가 일치하지 않습니다");
       }
       user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
     }

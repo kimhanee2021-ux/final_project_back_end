@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -40,7 +41,7 @@ public interface BoardApiDocs {
       @Parameter(hidden = true)
       @AuthenticationPrincipal Long userId,
       @RequestBody(description = "게시글 작성 정보", required = true)
-      BoardPostCreateRequest request
+      @Valid BoardPostCreateRequest request
   );
 
   @Operation(
@@ -95,7 +96,7 @@ public interface BoardApiDocs {
       @Parameter(description = "게시글 ID", required = true, example = "1")
       Long id,
       @RequestBody(description = "수정할 게시글 정보", required = true)
-      BoardPostUpdateRequest request
+      @Valid BoardPostUpdateRequest request
   );
 
   @Operation(
