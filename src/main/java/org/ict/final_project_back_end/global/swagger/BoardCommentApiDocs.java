@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.ict.final_project_back_end.domain.board.dto.BoardCommentCreateRequest;
 import org.ict.final_project_back_end.domain.board.dto.BoardCommentPageResponse;
 import org.ict.final_project_back_end.domain.board.dto.BoardCommentRequest;
@@ -54,9 +56,9 @@ public interface BoardCommentApiDocs {
       @Parameter(description = "게시글 ID", required = true, example = "1")
       Long postId,
       @Parameter(description = "페이지 번호(0부터 시작)", example = "0")
-      int page,
+      @Min(0) int page,
       @Parameter(description = "페이지 크기(1~100)", example = "20")
-      int size
+      @Min(1) @Max(100) int size
   );
 
   @Operation(

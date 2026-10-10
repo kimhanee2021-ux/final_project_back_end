@@ -46,7 +46,7 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             // 로그인/회원가입, 스웨거는 인증 없이 허용
-            .requestMatchers("/api/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+            .requestMatchers("/api/auth/**","/api/games/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
             // 그 외 /api/** 는 반드시 로그인(JWT)이 있어야 접근 가능
             .requestMatchers("/api/**").authenticated()
             .anyRequest().permitAll())

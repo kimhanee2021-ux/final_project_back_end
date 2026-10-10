@@ -1,17 +1,17 @@
 package org.ict.final_project_back_end.domain.board.controller;
 import java.net.URI;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import org.ict.final_project_back_end.domain.board.dto.*;
 import org.ict.final_project_back_end.domain.board.service.BoardCommentService;
 import org.ict.final_project_back_end.global.swagger.BoardCommentApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/board/{postId}/comments")
+@Validated
 public class BoardCommentController implements BoardCommentApiDocs {
   private final BoardCommentService service;
   public BoardCommentController(BoardCommentService service) { this.service = service; }
@@ -25,8 +25,8 @@ public class BoardCommentController implements BoardCommentApiDocs {
   @Override
   @GetMapping
   public ResponseEntity<BoardCommentPageResponse> list(@PathVariable("postId") Long postId,
-      @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
-      @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
     return ResponseEntity.ok(service.list(postId, page, size));
   }
   @Override
