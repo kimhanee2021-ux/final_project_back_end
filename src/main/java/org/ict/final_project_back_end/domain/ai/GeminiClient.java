@@ -107,7 +107,10 @@ public class GeminiClient {
       if(response.statusCode()==401 || response.statusCode()==403)throw new AiException(SERVICE_UNAVAILABLE,"AI 연결 설정을 확인해주세요.");
       if(response.statusCode()!=200 || response.body().length>131072)throw invalid();
       var candidate=json.readTree(response.body()).path("candidates").path(0);
-      if(!"STOP".equals(candidate.path("finishReason").asText()))throw invalid();
+      if(!"STOP".equals(candidate.path("finishReason").asText())) {
+        log.warn("Screenshot response incomplete: finishReason={}", candidate.path("finishReason").asText());
+        throw invalid();
+      }
       StringBuilder text=new StringBuilder();
       for(var part:candidate.path("content").path("parts"))if(!part.path("thought").asBoolean(false))text.append(part.path("text").asText(""));
       var answer=json.readTree(text.toString());
