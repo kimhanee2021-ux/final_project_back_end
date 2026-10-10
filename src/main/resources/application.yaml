@@ -1,6 +1,10 @@
 server:
   port: 8080
 spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
   application:
     name: final_project_back_end
   datasource:
@@ -40,3 +44,7 @@ app:
     games:
       enabled: ${SEED_GAMES_ENABLED:true}
       chunk-size: ${SEED_GAMES_CHUNK_SIZE:500}
+
+board:
+  images:
+    directory: ${BOARD_IMAGE_DIRECTORY:./uploads/board}

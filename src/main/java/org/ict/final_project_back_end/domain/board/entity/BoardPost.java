@@ -79,4 +79,19 @@ public class BoardPost {
   void touchUpdatedAt() {
     this.updatedAt = LocalDateTime.now();
   }
+
+  public void update(String category, Long appId, String tag, String title,
+      String content, boolean anonymous, LocalDateTime expiresAt) {
+    this.category = category;
+    this.appId = appId;
+    this.tag = tag;
+    this.title = title;
+    this.content = content;
+    this.anonymous = anonymous;
+    this.expiresAt = expiresAt;
+  }
+
+  public void selectImage(String imageUrl) {
+    this.imageUrl = imageUrl;
+  }
 }
