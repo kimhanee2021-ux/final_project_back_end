@@ -21,16 +21,16 @@ public class BoardCommentController {
     return ResponseEntity.created(URI.create("/api/board/" + postId + "/comments/" + response.id())).body(response);
   }
   @GetMapping
-  public BoardCommentPageResponse list(@PathVariable("postId") Long postId,
+  public ResponseEntity<BoardCommentPageResponse> list(@PathVariable("postId") Long postId,
       @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
       @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size) {
-    return service.list(postId, page, size);
+    return ResponseEntity.ok(service.list(postId, page, size));
   }
   @PutMapping("/{commentId}")
-  public BoardCommentResponse update(@AuthenticationPrincipal Long userId,
+  public ResponseEntity<BoardCommentResponse> update(@AuthenticationPrincipal Long userId,
       @PathVariable("postId") Long postId, @PathVariable("commentId") Long commentId,
       @Valid @RequestBody BoardCommentRequest request) {
-    return service.update(userId, postId, commentId, request);
+    return ResponseEntity.ok(service.update(userId, postId, commentId, request));
   }
   @DeleteMapping("/{commentId}")
   public ResponseEntity<Void> delete(@AuthenticationPrincipal Long userId,

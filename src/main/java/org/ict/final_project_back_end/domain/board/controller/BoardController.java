@@ -37,24 +37,24 @@ public class BoardController {
   }
 
   @GetMapping("/{id}")
-  public BoardPostDetailResponse get(@PathVariable("id") Long id) {
-    return service.findPost(id);
+  public ResponseEntity<BoardPostDetailResponse> get(@PathVariable("id") Long id) {
+    return ResponseEntity.ok(service.findPost(id));
   }
 
   @GetMapping
-  public BoardPostPageResponse list(
+  public ResponseEntity<BoardPostPageResponse> list(
       @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
       @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(100) int size,
       @RequestParam(name = "category", required = false) @Size(max = 30) String category,
       @RequestParam(name = "keyword", required = false) @Size(max = 200) String keyword) {
-    return service.listPosts(page, size, category, keyword);
+    return ResponseEntity.ok(service.listPosts(page, size, category, keyword));
   }
 
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
-  public BoardPostDetailResponse update(@AuthenticationPrincipal Long userId,
+  public ResponseEntity<BoardPostDetailResponse> update(@AuthenticationPrincipal Long userId,
       @PathVariable("id") Long id,
       @Valid @RequestBody org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
-    return service.updatePost(userId, id, request);
+    return ResponseEntity.ok(service.updatePost(userId, id, request));
   }
 
   @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
