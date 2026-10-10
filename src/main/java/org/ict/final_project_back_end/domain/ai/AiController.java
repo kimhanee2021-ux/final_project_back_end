@@ -9,8 +9,15 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController @RequestMapping("/api/ai") @Tag(name="AI 게임 추천·구매 상담")
 public class AiController {
-  private final AiService service; private final AiCatalog catalog;
-  public AiController(AiService service,AiCatalog catalog){this.service=service;this.catalog=catalog;}
+  private final AiService service; private final AiCatalog catalog; private final ScreenshotService screenshots;
+  public AiController(AiService service,AiCatalog catalog,ScreenshotService screenshots){this.service=service;this.catalog=catalog;this.screenshots=screenshots;}
+  @PostMapping(value="/screenshots", consumes="multipart/form-data")
+  public ScreenshotResponse screenshot(@AuthenticationPrincipal Long userId,
+      @RequestParam("image") org.springframework.web.multipart.MultipartFile image,
+      @RequestParam(value="type",defaultValue="play") String type,
+      @RequestParam(value="game",defaultValue="") String game) {
+    return screenshots.analyze(userId,image,type,game);
+  }
   @PostMapping("/chat") public AiResponse chat(@AuthenticationPrincipal Long userId,@Valid @RequestBody AiRequest request){return service.chat(userId,request);}
   @GetMapping("/games") public List<AiResponse.GameCard> search(@RequestParam(name="keyword") @Size(max=100) String keyword){return catalog.search(keyword);}
 }

@@ -26,10 +26,12 @@ class AiApiTest {
   static HttpServer server;
   static volatile int externalStatus = 200;
   static volatile String reply;
+  static volatile String received;
   static {
     try {
       server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
       server.createContext("/", exchange -> {
+        received = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         byte[] body = reply.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(externalStatus, body.length);
         exchange.getResponseBody().write(body); exchange.close();
@@ -72,5 +74,45 @@ class AiApiTest {
   @Test void noCatalogMatchesReturnsClarification() throws Exception {chat(REQUEST.replace("RPG", "없는장르")).andExpect(status().isOk()).andExpect(jsonPath("$.games").isEmpty());}
   @Test void requiresLogin() throws Exception {mvc.perform(post("/api/ai/chat").contentType(MediaType.APPLICATION_JSON).content(REQUEST)).andExpect(status().isUnauthorized());}
   @Test void searchFindsOnlyCatalogGames() throws Exception {mvc.perform(get("/api/ai/games?keyword=실제").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$[0].name").value("실제 RPG"));}
+  org.springframework.mock.web.MockMultipartFile screenshot() throws Exception {
+    var image = new java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_RGB);
+    var bytes = new java.io.ByteArrayOutputStream(); javax.imageio.ImageIO.write(image, "png", bytes);
+    return new org.springframework.mock.web.MockMultipartFile("image", "screen.png", "image/png", bytes.toByteArray());
+  }
+  void imageReply() throws Exception {
+    var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    String text=mapper.writeValueAsString(java.util.Map.of("summary","체력이 낮은 상황입니다.","details",java.util.List.of("체력 표시가 보입니다."),"actions",java.util.List.of("안전한 장소로 이동하세요."),"uncertainty","게임 이름은 확인하기 어렵습니다."));
+    reply=mapper.writeValueAsString(java.util.Map.of("candidates",java.util.List.of(java.util.Map.of("finishReason","STOP","content",java.util.Map.of("parts",java.util.List.of(java.util.Map.of("text",text)))))));
+  }
+  @Test void screenshotSendsImageAndReturnsRealAnalysis() throws Exception {
+    imageReply();
+    mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","play").header("Authorization",token))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.summary").value("체력이 낮은 상황입니다."))
+        .andExpect(jsonPath("$.isMock").value(false));
+    var payload=new com.fasterxml.jackson.databind.ObjectMapper().readTree(received);
+    Assertions.assertEquals("image/png",payload.at("/contents/0/parts/1/inlineData/mimeType").asText());
+    Assertions.assertArrayEquals(screenshot().getBytes(),java.util.Base64.getDecoder().decode(payload.at("/contents/0/parts/1/inlineData/data").asText()));
+  }
+  @Test void screenshotNeedsLogin() throws Exception {mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","play")).andExpect(status().isUnauthorized());}
+  @Test void screenshotRejectsFakeImage() throws Exception {
+    mvc.perform(multipart("/api/ai/screenshots").file(new org.springframework.mock.web.MockMultipartFile("image","bad.png","image/png","fake".getBytes())).param("type","play").header("Authorization",token)).andExpect(status().isBadRequest());
+  }
+  @Test void screenshotRejectsUnknownMode() throws Exception {mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","other").header("Authorization",token)).andExpect(status().isBadRequest());}
+  @Test void screenshotRejectsOversize() throws Exception {mvc.perform(multipart("/api/ai/screenshots").file(new org.springframework.mock.web.MockMultipartFile("image","huge.png","image/png",new byte[10*1024*1024+1])).param("type","play").header("Authorization",token)).andExpect(status().isPayloadTooLarge());}
+  @Test void screenshotHandlesBlockedAndMalformedReplies() throws Exception {reply="{}";mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","play").header("Authorization",token)).andExpect(status().isBadGateway());}
+  @Test void screenshotQuotaHasSafeMessage() throws Exception {externalStatus=429;reply="secret upstream diagnostic";mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","error").header("Authorization",token)).andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.error").exists());}
+  @Test void screenshotRejectsMissingImage() throws Exception {mvc.perform(multipart("/api/ai/screenshots").param("type","item").header("Authorization",token)).andExpect(status().isBadRequest());}
+  @Test void screenshotSupportsWebp() throws Exception {
+    imageReply();
+    byte[] bytes=java.util.Base64.getDecoder().decode("UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoCAAIAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA=");
+    mvc.perform(multipart("/api/ai/screenshots").file(new org.springframework.mock.web.MockMultipartFile("image","game.webp","image/webp",bytes)).param("type","item").header("Authorization",token)).andExpect(status().isOk());
+  }
+  @Test void screenshotRejectsMimeMismatch() throws Exception {
+    mvc.perform(multipart("/api/ai/screenshots").file(new org.springframework.mock.web.MockMultipartFile("image","game.jpg","image/jpeg",screenshot().getBytes())).param("type","item").header("Authorization",token)).andExpect(status().isBadRequest());
+  }
+  @Test void screenshotRejectsInvalidStructuredAnswer() throws Exception {
+    imageReply();reply=reply.replace("summary","invalidField");
+    mvc.perform(multipart("/api/ai/screenshots").file(screenshot()).param("type","play").header("Authorization",token)).andExpect(status().isBadGateway());
+  }
   org.springframework.test.web.servlet.ResultActions chat(String body) throws Exception {return mvc.perform(post("/api/ai/chat").header("Authorization",token).contentType(MediaType.APPLICATION_JSON).content(body));}
 }

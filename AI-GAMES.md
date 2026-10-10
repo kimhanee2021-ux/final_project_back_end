@@ -4,6 +4,10 @@
 
 ## 실행과 연결
 
+- `POST /api/ai/screenshots`: 인증된 multipart 요청, `image` 파일, `type=item|play|error`, 선택 `game` (100자). JPG/PNG/WEBP 10MB·2400만 화소 검사. 응답 `{summary,details,actions,uncertainty,isMock:false}`. 기존 AI 분당6회/동시1회 제한 공유. 이미지 API 제한 90초. 별도 DB 스키마 변경 없음.
+- 이미지·답변은 앱의 DB나 영구 파일에 저장하지 않는다. 프레임워크의 multipart 임시 파일은 요청 종료 시 정리된다. ImageIO 메타데이터는 메모리 캐시를 사용한다. 키/이미지/업스트림 원문은 로그에 출력하지 않는다.
+- 전송 방식은 [Google 공식 이미지 이해 문서](https://ai.google.dev/gemini-api/docs/image-understanding)의 inline 이미지 입력을 따른다. 이미지 속 지시문은 분석할 자료로 처리하도록 시스템 규칙을 둔다. 읽히지 않는 수치와 오류 원인을 확정하지 않도록 요구하고 JSON 응답을 검증한다.
+
 - 서버 환경에 `GEMINI_API_KEY`를 설정한다. 선택 설정 `GEMINI_MODEL`의 기본값은 `gemini-flash-latest`. 키는 프런트나 Git에 넣지 않는다.
 - 기존 DB/JWT 설정이 필요하다. 기존 `games` 테이블의 데이터로 추천한다. 빈 카탈로그에서는 게임 데이터 등록 안내를 반환한다.
 - 기존 로그인 JWT를 Bearer 헤더로 전달한다.
