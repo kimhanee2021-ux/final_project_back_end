@@ -5,7 +5,6 @@ import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundEx
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,26 +12,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class BoardLikeServiceImpl implements BoardLikeService {
-  public static final String TARGET_TYPE = "BOARD_POST";
+  private static final String TARGET_TYPE = "BOARD_POST";
   private static final String LIKE = "LIKE";
   private final BoardPostRepository posts;
   private final ContentInteractionRepository interactions;
   private final UserRepository users;
-  public BoardLikeServiceImpl(BoardPostRepository posts, ContentInteractionRepository interactions, UserRepository users) {
+  private final BoardPostAccessGuard accessGuard;
+  public BoardLikeServiceImpl(BoardPostRepository posts, ContentInteractionRepository interactions, UserRepository users,
+      BoardPostAccessGuard accessGuard) {
     this.posts = posts;
     this.interactions = interactions;
     this.users = users;
+    this.accessGuard = accessGuard;
   }
   @Override
   public BoardLikeResponse status(Long userId, Long postId) {
-    requireLogin(userId);
+    accessGuard.requireLogin(userId);
     if (!posts.existsById(postId)) throw new BoardPostNotFoundException();
     return response(userId, postId);
   }
   @Override
   @Transactional
   public BoardLikeResponse like(Long userId, Long postId) {
-    requireLogin(userId);
+    accessGuard.requireLogin(userId);
     posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
     var user = users.findById(userId).orElseThrow(UserNotFoundException::new);
     if (interactions.findByTargetTypeAndTargetIdAndUserIdAndInteractionType(TARGET_TYPE, postId, userId, LIKE).isEmpty()) {
@@ -44,7 +46,7 @@ public class BoardLikeServiceImpl implements BoardLikeService {
   @Override
   @Transactional
   public BoardLikeResponse cancel(Long userId, Long postId) {
-    requireLogin(userId);
+    accessGuard.requireLogin(userId);
     posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
     interactions.findByTargetTypeAndTargetIdAndUserIdAndInteractionType(TARGET_TYPE, postId, userId, LIKE)
         .ifPresent(interactions::delete);
@@ -56,7 +58,9 @@ public class BoardLikeServiceImpl implements BoardLikeService {
     boolean liked = interactions.findByTargetTypeAndTargetIdAndUserIdAndInteractionType(TARGET_TYPE, postId, userId, LIKE).isPresent();
     return new BoardLikeResponse(postId, count, liked);
   }
-  private void requireLogin(Long userId) {
-    if (userId == null || userId <= 0) throw new AuthenticationRequiredException();
+  @Override
+  @Transactional
+  public void removeAllForPost(Long postId) {
+    interactions.deleteByTargetTypeAndTargetId(TARGET_TYPE, postId);
   }
 }

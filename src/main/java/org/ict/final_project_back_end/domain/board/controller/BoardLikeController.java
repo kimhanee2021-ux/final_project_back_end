@@ -20,6 +20,8 @@ public class BoardLikeController implements BoardLikeApiDocs {
   public ResponseEntity<BoardLikeResponse> like(@AuthenticationPrincipal Long userId, @PathVariable("postId") Long postId) {
     return ResponseEntity.ok(service.like(userId, postId));
   }
+  // DELETE가 204가 아니라 200+바디를 반환한다: 프론트(useBoardPost.js)가 이 바디의 likeCount/liked로
+  // 상태를 직접 갱신하므로, 204로 "표준화"하면 프론트가 깨진다.
   @Override
   @DeleteMapping
   public ResponseEntity<BoardLikeResponse> cancel(@AuthenticationPrincipal Long userId, @PathVariable("postId") Long postId) {

@@ -8,7 +8,6 @@ import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundEx
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
@@ -23,20 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoardPostServiceImpl implements BoardPostService {
   private final BoardPostRepository posts;
   private final UserRepository users;
-  private final org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository interactions;
+  private final BoardLikeService likes;
+  private final BoardPostAccessGuard accessGuard;
 
-  public BoardPostServiceImpl(BoardPostRepository posts, UserRepository users, org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository interactions) {
+  public BoardPostServiceImpl(BoardPostRepository posts, UserRepository users, BoardLikeService likes,
+      BoardPostAccessGuard accessGuard) {
     this.posts = posts;
     this.users = users;
-    this.interactions = interactions;
+    this.likes = likes;
+    this.accessGuard = accessGuard;
   }
 
   @Override
   @Transactional
   public BoardPostCreateResponse createPost(Long authenticatedUserId, BoardPostCreateRequest request) {
-    if (authenticatedUserId == null || authenticatedUserId <= 0) {
-      throw new AuthenticationRequiredException();
-    }
+    accessGuard.requireLogin(authenticatedUserId);
     User author = users.findById(authenticatedUserId).orElseThrow(UserNotFoundException::new);
     BoardPost post = BoardPost.builder()
         .category(request.category()).appId(request.appId()).tag(request.tag())
@@ -63,7 +63,7 @@ public class BoardPostServiceImpl implements BoardPostService {
   @Transactional
   public BoardPostDetailResponse updatePost(Long userId, Long postId,
       org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
-    BoardPost post = ownedPost(userId, postId);
+    BoardPost post = accessGuard.ownedPostForUpdate(userId, postId);
     post.update(request.category(), request.appId(), request.tag(), request.title(),
         request.content(), request.isAnonymous(), request.expiresAt());
     posts.flush();
@@ -73,23 +73,12 @@ public class BoardPostServiceImpl implements BoardPostService {
   @Override
   @Transactional
   public void deletePost(Long userId, Long postId) {
-    BoardPost post = ownedPost(userId, postId);
+    BoardPost post = accessGuard.ownedPostForUpdate(userId, postId);
     if (posts.countComments(postId) > 0 || posts.countImages(postId) > 0) {
       throw new org.ict.final_project_back_end.domain.board.exception.BoardPostConflictException();
     }
-    interactions.deleteByTargetTypeAndTargetId(BoardLikeServiceImpl.TARGET_TYPE, postId);
+    likes.removeAllForPost(postId);
     posts.delete(post);
     posts.flush();
-  }
-
-  private BoardPost ownedPost(Long userId, Long postId) {
-    if (userId == null || userId <= 0) {
-      throw new AuthenticationRequiredException();
-    }
-    BoardPost post = posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
-    if (!post.getAuthor().getId().equals(userId)) {
-      throw new org.ict.final_project_back_end.domain.board.exception.BoardPostForbiddenException();
-    }
-    return post;
   }
 }

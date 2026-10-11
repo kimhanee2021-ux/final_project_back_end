@@ -5,7 +5,6 @@ import org.ict.final_project_back_end.domain.board.exception.*;
 import org.ict.final_project_back_end.domain.board.repository.BoardCommentRepository;
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -18,15 +17,18 @@ public class BoardCommentServiceImpl implements BoardCommentService {
   private final BoardCommentRepository comments;
   private final BoardPostRepository posts;
   private final UserRepository users;
-  public BoardCommentServiceImpl(BoardCommentRepository comments, BoardPostRepository posts, UserRepository users) {
+  private final BoardPostAccessGuard accessGuard;
+  public BoardCommentServiceImpl(BoardCommentRepository comments, BoardPostRepository posts, UserRepository users,
+      BoardPostAccessGuard accessGuard) {
     this.comments = comments;
     this.posts = posts;
     this.users = users;
+    this.accessGuard = accessGuard;
   }
   @Override
   @Transactional
   public BoardCommentResponse create(Long userId, Long postId, BoardCommentCreateRequest request) {
-    requireLogin(userId);
+    accessGuard.requireLogin(userId);
     var post = posts.findById(postId).orElseThrow(BoardPostNotFoundException::new);
     var author = users.findById(userId).orElseThrow(UserNotFoundException::new);
     BoardComment parent = null;
@@ -61,12 +63,9 @@ public class BoardCommentServiceImpl implements BoardCommentService {
     comments.flush();
   }
   private BoardComment ownedComment(Long userId, Long postId, Long commentId) {
-    requireLogin(userId);
+    accessGuard.requireLogin(userId);
     var comment = comments.findByIdAndPostId(commentId, postId).orElseThrow(BoardCommentNotFoundException::new);
     if (!comment.getAuthor().getId().equals(userId)) throw new BoardCommentForbiddenException();
     return comment;
-  }
-  private void requireLogin(Long userId) {
-    if (userId == null || userId <= 0) throw new AuthenticationRequiredException();
   }
 }

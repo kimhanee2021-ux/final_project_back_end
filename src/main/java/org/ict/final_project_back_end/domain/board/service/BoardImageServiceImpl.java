@@ -8,7 +8,6 @@ import org.ict.final_project_back_end.domain.board.repository.BoardPostRepositor
 import org.ict.final_project_back_end.domain.board.repository.BoardPostImageRepository;
 import org.ict.final_project_back_end.domain.board.storage.BoardImageStorage;
 import org.ict.final_project_back_end.domain.board.storage.BoardImageValidator;
-import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -25,9 +24,10 @@ public class BoardImageServiceImpl implements BoardImageService {
   private final BoardPostImageRepository images;
   private final BoardImageStorage storage;
   private final BoardImageValidator validator;
+  private final BoardPostAccessGuard accessGuard;
   public BoardImageServiceImpl(BoardPostRepository posts, BoardPostImageRepository images,
-      BoardImageStorage storage, BoardImageValidator validator) {
-    this.posts=posts; this.images=images; this.storage=storage; this.validator=validator;
+      BoardImageStorage storage, BoardImageValidator validator, BoardPostAccessGuard accessGuard) {
+    this.posts=posts; this.images=images; this.storage=storage; this.validator=validator; this.accessGuard=accessGuard;
   }
   @Override @Transactional
   public BoardImageResponse upload(Long userId, Long postId, MultipartFile file) {
@@ -77,10 +77,7 @@ public class BoardImageServiceImpl implements BoardImageService {
     });
   }
   private BoardPost ownedPost(Long userId,Long postId) {
-    if(userId==null || userId<=0) throw new AuthenticationRequiredException();
-    var post=posts.findByIdForUpdate(postId).orElseThrow(BoardPostNotFoundException::new);
-    if(!post.getAuthor().getId().equals(userId)) throw new BoardPostForbiddenException();
-    return post;
+    return accessGuard.ownedPostForUpdate(userId, postId);
   }
   private BoardImageException missingImage() { return new BoardImageException(HttpStatus.NOT_FOUND,"BOARD_IMAGE_NOT_FOUND","이미지를 찾을 수 없습니다."); }
   private String url(Long postId,String key) { return "/api/board/"+postId+"/images/files/"+key; }
