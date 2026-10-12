@@ -87,7 +87,7 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     if (price != null && GamePriceKrw.PRICED.equals(price.getStatus())) {
       amount = price.getInitialKrw();
       amountSource = "ESTIMATED";
-    } else if ((price != null && GamePriceKrw.FREE.equals(price.getStatus())) || isFree(game, price)) {
+    } else if (price != null && GamePriceKrw.FREE.equals(price.getStatus())) {
       amount = 0;
       amountSource = "FREE";
     } else {
@@ -107,21 +107,6 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         toHours(owned.getPlaytimeForever()),
         toHours(owned.getPlaytime2Weeks()),
         owned.getLastPlayedAt());
-  }
-
-  // FREE로 확인되지 않았더라도 원화 가격 정보가 없고 CSV 달러 가격이 0이면 무료 게임으로 본다 (예: Dota 2)
-  private boolean isFree(Game game, GamePriceKrw price) {
-    if (game == null || game.getPriceInfo() == null) {
-      return false;
-    }
-    if (price != null && !GamePriceKrw.NO_PRICE.equals(price.getStatus())) {
-      return false;
-    }
-    try {
-      return Double.parseDouble(game.getPriceInfo()) == 0.0;
-    } catch (NumberFormatException e) {
-      return false;
-    }
   }
 
   private List<String> splitGenres(String genre) {
