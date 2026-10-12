@@ -163,8 +163,9 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     return rank < 0 ? GENRE_PRIORITY.size() : rank;
   }
 
-  // 스팀 플레이 시간은 분 단위라 시간 단위(소수 첫째 자리)로 바꾼다
+  // 스팀 플레이 시간은 분 단위라 시간 단위로 바꾼다. 반올림은 화면에서 표시할 때만 한다
+  // (여기서 0.1시간 단위로 반올림하면 3분 플레이도 6분으로 계산돼 시간당 비용이 크게 틀어진다)
   private double toHours(Integer minutes) {
-    return minutes == null ? 0 : Math.round(minutes / 6.0) / 10.0;
+    return minutes == null ? 0 : minutes / 60.0;
   }
 }
