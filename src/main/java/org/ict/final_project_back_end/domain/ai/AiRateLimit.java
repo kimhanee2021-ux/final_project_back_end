@@ -10,10 +10,12 @@ public class AiRateLimit {
   private record Window(long minute,int count) { }
   private final Map<Long,Window> windows=new HashMap<>();
   private final Map<Long,Window> worldcupWindows=new HashMap<>();
+  private final Map<Long,Window> managerWindows=new HashMap<>();
   private final java.util.Set<Long> active=new java.util.HashSet<>();
   public synchronized void begin(Long userId){
     begin(userId,6,windows);
   }
+  public synchronized void beginManager(Long userId){begin(userId,6,managerWindows);}
   public synchronized void beginWorldcup(Long userId){begin(userId,30,worldcupWindows);}
   private void begin(Long userId,int maximum,Map<Long,Window> windows){
     long minute=System.currentTimeMillis()/60000;
