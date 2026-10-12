@@ -44,6 +44,9 @@ app:
     games:
       enabled: ${SEED_GAMES_ENABLED:true}
       chunk-size: ${SEED_GAMES_CHUNK_SIZE:500}
+    #스팀 한국 가격(원화) 시드 (games 시드가 끝난 뒤 true로 켜서 사용. 약 1시간, 백그라운드로 돌고 중단돼도 이어서 진행됨)
+    prices:
+      enabled: ${SEED_PRICES_ENABLED:false}
 
 board:
   images:
