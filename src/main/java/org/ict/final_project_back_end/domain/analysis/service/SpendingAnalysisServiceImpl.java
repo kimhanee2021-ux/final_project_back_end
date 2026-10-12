@@ -9,6 +9,8 @@ import org.ict.final_project_back_end.domain.game.repository.GameRepository;
 import org.ict.final_project_back_end.domain.game.service.GamePriceKrwService;
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
+import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
+import org.ict.final_project_back_end.domain.purchase.entity.PurchaseTransaction;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
@@ -18,10 +20,13 @@ import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -79,7 +84,8 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         .collect(Collectors.toMap(GamePriceKrw::getAppId, Function.identity()));
 
     // 구매내역을 가져왔으면 실제 결제액으로, 아니면 현재 한국 정가로 추정한다
-    PurchaseAggregator.Result purchases = PurchaseAggregator.aggregate(purchaseRepository.findAllWithItemsByUserId(userId));
+    List<PurchaseTransaction> history = purchaseRepository.findAllWithItemsByUserId(userId);
+    PurchaseAggregator.Result purchases = PurchaseAggregator.aggregate(history, listPrices(history, prices));
     boolean hasHistory = !purchases.transactions().isEmpty() || purchases.unconvertedCount() > 0;
 
     List<SpendingGameResponse> result = owned.stream()
@@ -141,7 +147,27 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         spend == null ? 0 : spend.refundKrw(),
         spend == null ? null : spend.firstPurchasedAt(),
         spend == null ? 0 : spend.dlcCount(),
-        spend == null ? 0 : spend.savedKrw());
+        spend == null ? 0 : spend.savedKrw(),
+        spend != null && spend.bundleCount() > 0);
+  }
+
+  // 여러 게임이 섞인 번들을 나눌 비율로 쓸 현재 한국 정가 (보유하지 않은 게임도 포함해 한 번에 조회)
+  private Map<Long, Integer> listPrices(List<PurchaseTransaction> history, Map<Long, GamePriceKrw> ownedPrices) {
+    Map<Long, Integer> result = new HashMap<>();
+    List<Long> others = new ArrayList<>();
+    history.stream().flatMap(tx -> tx.getItems().stream()).map(PurchaseItem::targetAppId).filter(Objects::nonNull)
+        .distinct().forEach(appId -> {
+          GamePriceKrw price = ownedPrices.get(appId);
+          if (price == null) {
+            others.add(appId);
+          } else if (GamePriceKrw.PRICED.equals(price.getStatus())) {
+            result.put(appId, price.getInitialKrw());
+          }
+        });
+    priceRepository.findAllById(others).stream()
+        .filter(price -> GamePriceKrw.PRICED.equals(price.getStatus()))
+        .forEach(price -> result.put(price.getAppId(), price.getInitialKrw()));
+    return result;
   }
 
   private List<String> splitGenres(String genre) {
