@@ -54,4 +54,8 @@ public class BoardComment {
   @Builder.Default
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt = LocalDateTime.now();
+
+  public void updateContent(String content) {
+    this.content = content;
+  }
 }

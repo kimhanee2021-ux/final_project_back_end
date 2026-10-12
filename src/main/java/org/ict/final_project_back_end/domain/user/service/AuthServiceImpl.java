@@ -70,9 +70,9 @@ public class AuthServiceImpl implements AuthService {
       throw new InvalidRequestException("이메일과 비밀번호를 모두 입력해주세요");
     }
     User user = userRepository.findByEmail(request.email())
-        .orElseThrow(() -> new InvalidCredentialsException("가입되지 않은 이메일입니다"));
+        .orElseThrow(() -> new InvalidCredentialsException(InvalidCredentialsException.INVALID_CREDENTIALS, "가입되지 않은 이메일입니다"));
     if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-      throw new InvalidCredentialsException("비밀번호가 일치하지 않습니다");
+      throw new InvalidCredentialsException(InvalidCredentialsException.INVALID_CREDENTIALS, "비밀번호가 일치하지 않습니다");
     }
     return new TokenResponse(jwtService.generateToken(user.getId(), user.getEmail()));
   }
