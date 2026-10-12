@@ -11,6 +11,8 @@ import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseTransaction;
+import org.ict.final_project_back_end.domain.purchase.entity.GameLicense;
+import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
@@ -51,17 +53,20 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
   private final GamePriceKrwRepository priceRepository;
   private final GamePriceKrwService priceService;
   private final PurchaseTransactionRepository purchaseRepository;
+  private final GameLicenseRepository licenseRepository;
 
   public SpendingAnalysisServiceImpl(UserRepository userRepository, LibraryGameRepository libraryGameRepository,
                                      GameRepository gameRepository, GamePriceKrwRepository priceRepository,
                                      GamePriceKrwService priceService,
-                                     PurchaseTransactionRepository purchaseRepository) {
+                                     PurchaseTransactionRepository purchaseRepository,
+                                     GameLicenseRepository licenseRepository) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.gameRepository = gameRepository;
     this.priceRepository = priceRepository;
     this.priceService = priceService;
     this.purchaseRepository = purchaseRepository;
+    this.licenseRepository = licenseRepository;
   }
 
   @Override
@@ -88,9 +93,14 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     PurchaseAggregator.Result purchases = PurchaseAggregator.aggregate(history, listPrices(history, prices));
     boolean hasHistory = !purchases.transactions().isEmpty() || purchases.unconvertedCount() > 0;
 
+    // 라이선스 페이지를 가져왔으면 게임별로 가장 먼저 계정에 추가된 라이선스(획득일·방법)
+    Map<Long, GameLicense> firstLicense = new HashMap<>();
+    licenseRepository.findMatchedByUserId(userId).forEach(license -> firstLicense.putIfAbsent(license.getAppId(), license));
+
     List<SpendingGameResponse> result = owned.stream()
         .map(libraryGame -> toResponse(libraryGame, games.get(libraryGame.getAppId()),
-            prices.get(libraryGame.getAppId()), hasHistory, purchases.byGame().get(libraryGame.getAppId())))
+            prices.get(libraryGame.getAppId()), hasHistory, purchases.byGame().get(libraryGame.getAppId()),
+            firstLicense.get(libraryGame.getAppId())))
         .toList();
     // 보유하지 않은 게임(환불·선물 등)에 쓴 돈도 실제 지출이므로 나눌 수 없는 지출에 더한다
     int notOwnedKrw = purchases.byGame().entrySet().stream()
@@ -107,7 +117,7 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
   }
 
   private SpendingGameResponse toResponse(LibraryGame owned, Game game, GamePriceKrw price, boolean hasHistory,
-                                          PurchaseAggregator.GameSpend spend) {
+                                          PurchaseAggregator.GameSpend spend, GameLicense license) {
     List<String> genres = splitGenres(game == null ? null : game.getGenre());
     boolean priced = price != null && GamePriceKrw.PRICED.equals(price.getStatus());
     boolean free = price != null && GamePriceKrw.FREE.equals(price.getStatus());
@@ -148,7 +158,9 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         spend == null ? null : spend.firstPurchasedAt(),
         spend == null ? 0 : spend.dlcCount(),
         spend == null ? 0 : spend.savedKrw(),
-        spend != null && spend.bundleCount() > 0);
+        spend != null && spend.bundleCount() > 0,
+        license == null ? null : license.getAcquiredAt(),
+        license == null ? null : license.getMethod());
   }
 
   // 여러 게임이 섞인 번들을 나눌 비율로 쓸 현재 한국 정가 (보유하지 않은 게임도 포함해 한 번에 조회)

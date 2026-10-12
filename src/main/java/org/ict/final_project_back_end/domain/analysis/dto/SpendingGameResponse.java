@@ -30,6 +30,9 @@ public record SpendingGameResponse(
     int dlcCount,
     int savedKrw,
     // 여러 게임이 든 번들로 산 게임이면 true: amount는 번들 결제액을 정가 비율로 나눈 배분값
-    boolean bundleAllocated
+    boolean bundleAllocated,
+    // 라이선스 페이지를 가져왔으면 이 게임을 계정에 처음 추가한 날과 방법(STORE/GIFT/COMPLIMENTARY/KEY/OTHER), 없으면 null
+    LocalDate acquiredAt,
+    String acquisitionMethod
 ) {
 }

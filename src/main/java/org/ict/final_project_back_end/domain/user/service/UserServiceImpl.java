@@ -1,6 +1,7 @@
 package org.ict.final_project_back_end.domain.user.service;
 
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
+import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserUpdateRequest;
@@ -21,15 +22,18 @@ public class UserServiceImpl implements UserService {
   private final UserRepository userRepository;
   private final LibraryGameRepository libraryGameRepository;
   private final PurchaseTransactionRepository purchaseTransactionRepository;
+  private final GameLicenseRepository gameLicenseRepository;
   private final PasswordEncoder passwordEncoder;
 
   public UserServiceImpl(UserRepository userRepository,
                          LibraryGameRepository libraryGameRepository,
                          PurchaseTransactionRepository purchaseTransactionRepository,
+                         GameLicenseRepository gameLicenseRepository,
                          PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.purchaseTransactionRepository = purchaseTransactionRepository;
+    this.gameLicenseRepository = gameLicenseRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -73,12 +77,13 @@ public class UserServiceImpl implements UserService {
     return UserResponse.from(user);
   }
 
-  // LibraryGame과 가져온 구매내역(purchase_transactions)이 users를 FK로 참조하므로 먼저 지워야 사용자 삭제가 성공한다.
+  // LibraryGame, 가져온 구매내역(purchase_transactions)과 라이선스(game_licenses)가 users를 FK로 참조하므로 먼저 지워야 사용자 삭제가 성공한다.
   @Override
   @Transactional
   public void deleteUser(Long userId) {
     User user = findUser(userId);
     libraryGameRepository.deleteByUserId(userId);
+    gameLicenseRepository.deleteByUserId(userId);
     purchaseTransactionRepository.deleteItemsByUserId(userId);
     purchaseTransactionRepository.deleteTransactionsByUserId(userId);
     userRepository.delete(user);

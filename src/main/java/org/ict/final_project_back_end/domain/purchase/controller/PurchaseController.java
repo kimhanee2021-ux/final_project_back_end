@@ -1,8 +1,11 @@
 package org.ict.final_project_back_end.domain.purchase.controller;
 
 import jakarta.validation.Valid;
+import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportRequest;
+import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportResponse;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportResponse;
+import org.ict.final_project_back_end.domain.purchase.service.LicenseImportService;
 import org.ict.final_project_back_end.domain.purchase.service.PurchaseImportService;
 import org.ict.final_project_back_end.global.swagger.PurchaseApiDocs;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +24,11 @@ import java.util.Map;
 public class PurchaseController implements PurchaseApiDocs {
 
   private final PurchaseImportService purchaseImportService;
+  private final LicenseImportService licenseImportService;
 
-  public PurchaseController(PurchaseImportService purchaseImportService) {
+  public PurchaseController(PurchaseImportService purchaseImportService, LicenseImportService licenseImportService) {
     this.purchaseImportService = purchaseImportService;
+    this.licenseImportService = licenseImportService;
   }
 
   @Override
@@ -31,6 +36,13 @@ public class PurchaseController implements PurchaseApiDocs {
   public ResponseEntity<PurchaseImportResponse> importHistory(@AuthenticationPrincipal Long userId,
                                                               @Valid @RequestBody PurchaseImportRequest request) {
     return ResponseEntity.ok(purchaseImportService.importHistory(userId, request));
+  }
+
+  @Override
+  @PostMapping("/licenses/import")
+  public ResponseEntity<LicenseImportResponse> importLicenses(@AuthenticationPrincipal Long userId,
+                                                              @Valid @RequestBody LicenseImportRequest request) {
+    return ResponseEntity.ok(licenseImportService.importLicenses(userId, request));
   }
 
   @Override

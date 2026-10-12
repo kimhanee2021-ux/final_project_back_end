@@ -64,4 +64,35 @@ class GameNameMatcherTest {
     assertEquals(7241, PurchaseImportService.toKrw(new BigDecimal("452"), new BigDecimal("16.019")));
     assertEquals(36000, PurchaseImportService.toKrw(new BigDecimal("36000"), BigDecimal.ONE));
   }
+
+  @Test
+  void licenseNamesMatchOwnedGamesAfterRemovingDecorations() {
+    Map<String, Long> owned = new LinkedHashMap<>();
+    owned.put("Don't Starve Together", 322330L);
+    owned.put("Aimlabs", 714010L);
+    owned.put("DARK SOULS™ II", 236430L);
+    owned.put("Hollow Knight", 367520L);
+    owned.put("Hollow Knight: Silksong", 1030300L);
+
+    assertEquals(322330L, GameNameMatcher.matchOwnedLicense("Don't Starve Together Gift", owned));
+    assertEquals(714010L, GameNameMatcher.matchOwnedLicense("Aimlabs - Free", owned));
+    assertEquals(236430L, GameNameMatcher.matchOwnedLicense("DARK SOULS™ II: Bundle (DX9)", owned));
+    // 정확히 같은 이름이 있으면 그 게임이 먼저다 (Silksong을 Hollow Knight로 묶지 않음)
+    assertEquals(1030300L, GameNameMatcher.matchOwnedLicense("Hollow Knight: Silksong", owned));
+    assertNull(GameNameMatcher.matchOwnedLicense("PUBG: BLINDSPOT Demo", owned));
+  }
+
+  @Test
+  void ownedNameAtTheEndMatchesTitlesWithAnotherLanguagePrefix() {
+    Map<String, Long> owned = new LinkedHashMap<>();
+    owned.put("Apocalypse Party", 2059170L);
+    owned.put("Portal", 400L);
+
+    assertEquals(2059170L, GameNameMatcher.ownedNameAtEnd("清零计划2：天启派对 Project Zero 2: Apocalypse Party", owned));
+    assertEquals(2059170L, GameNameMatcher.matchOwnedLicense("清零计划2：天启派对 Project Zero 2: Apocalypse Party", owned));
+    // 8자 미만의 짧은 이름은 끝이 같아도 연결하지 않는다
+    assertNull(GameNameMatcher.ownedNameAtEnd("Aperture Tag: The Paint Gun Testing Portal", owned));
+    // 바로 앞이 글자면 다른 단어의 일부라서 연결하지 않는다
+    assertNull(GameNameMatcher.ownedNameAtEnd("SuperApocalypse Party", owned));
+  }
 }

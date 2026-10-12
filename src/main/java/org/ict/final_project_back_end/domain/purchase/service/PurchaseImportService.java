@@ -6,6 +6,7 @@ import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportResponse;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseTransaction;
+import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
@@ -38,15 +39,18 @@ public class PurchaseImportService {
   private final PurchaseTransactionRepository transactionRepository;
   private final ExchangeRateService exchangeRateService;
   private final GameNameMatcher gameNameMatcher;
+  private final GameLicenseRepository licenseRepository;
 
   public PurchaseImportService(UserRepository userRepository, LibraryGameRepository libraryGameRepository,
                                PurchaseTransactionRepository transactionRepository,
-                               ExchangeRateService exchangeRateService, GameNameMatcher gameNameMatcher) {
+                               ExchangeRateService exchangeRateService, GameNameMatcher gameNameMatcher,
+                               GameLicenseRepository licenseRepository) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.transactionRepository = transactionRepository;
     this.exchangeRateService = exchangeRateService;
     this.gameNameMatcher = gameNameMatcher;
+    this.licenseRepository = licenseRepository;
   }
 
   public PurchaseImportResponse importHistory(Long userId, PurchaseImportRequest request) {
@@ -109,10 +113,11 @@ public class PurchaseImportService {
     return new PurchaseImportResponse(toSave.size(), duplicates, List.copyOf(unmatched), List.copyOf(unsupported));
   }
 
-  // 가져온 구매내역을 모두 지운다 (다시 가져오기 전 초기화)
+  // 가져온 구매내역과 라이선스를 모두 지운다 (다시 가져오기 전 초기화)
   @Transactional
   public int deleteAll(Long userId) {
     loadUser(userId);
+    licenseRepository.deleteByUserId(userId);
     transactionRepository.deleteItemsByUserId(userId);
     return transactionRepository.deleteTransactionsByUserId(userId);
   }

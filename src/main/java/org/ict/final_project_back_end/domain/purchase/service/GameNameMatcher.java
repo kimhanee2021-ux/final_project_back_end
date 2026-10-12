@@ -53,6 +53,8 @@ public class GameNameMatcher {
   private static final Pattern MARKS = Pattern.compile("[™®©]");
   private static final Pattern NON_WORD = Pattern.compile("[^\\p{L}\\p{N}]+");
   // 본편 이름 뒤에 DLC 이름이 붙을 때 쓰는 구분자
+  // 보유 게임 이름이 끝에 붙을 때 바로 앞에 와야 하는 글자 (공백 또는 구분자)
+  private static final Pattern SUFFIX_BOUNDARY = Pattern.compile("[\\s:：\\-–—]");
   private static final Pattern DLC_SEPARATOR = Pattern.compile("^\\s*(:|-|–|—)\\s*\\S");
 
   private final GameRepository gameRepository;
@@ -77,6 +79,10 @@ public class GameNameMatcher {
     Long baseCandidate = dlcBaseCandidate(rawName, library);
     if (baseCandidate != null) {
       return confirmDlc(rawName, baseCandidate, budget);
+    }
+    Long suffixMatch = ownedNameAtEnd(rawName, library);
+    if (suffixMatch != null) {
+      return Match.matched(suffixMatch);
     }
     Long catalogAppId = gameRepository.findFirstByNameIgnoreCase(rawName.trim()).map(g -> g.getAppId()).orElse(null);
     if (catalogAppId != null) {
@@ -130,6 +136,47 @@ public class GameNameMatcher {
     String text = MARKS.matcher(name).replaceAll("");
     text = Normalizer.normalize(text, Normalizer.Form.NFKC);
     return NON_WORD.matcher(text.toLowerCase(Locale.ROOT)).replaceAll("");
+  }
+
+  // 라이선스 페이지 이름 꾸밈말: "Don't Starve Together Gift", "Aimlabs - Free", "DARK SOULS II: Bundle (DX9)"의 (DX9)
+  private static final Pattern LICENSE_SUFFIX = Pattern.compile("(?i)(\\s*-\\s*free|\\s+free|\\s+gift|\\s*\\([^)]*\\))\\s*$");
+
+  // 라이선스 이름을 내 보유 게임 appId에 연결한다 (금액이 없어 스팀 확인 없이 이름만 본다). 못 찾으면 null.
+  //   1) 이름이 같음  2) 꾸밈말(Gift, - Free, (DX9))을 뗀 이름이 같음  3) "보유 게임 이름 + 구분자"로 시작(번들·DLC 패키지)
+  public static Long matchOwnedLicense(String rawName, Map<String, Long> library) {
+    String cleaned = rawName;
+    for (String previous = null; !cleaned.equals(previous); ) {
+      previous = cleaned;
+      cleaned = LICENSE_SUFFIX.matcher(cleaned).replaceAll("");
+    }
+    for (String candidate : new String[]{rawName, cleaned}) {
+      String normalized = normalize(candidate);
+      for (Map.Entry<String, Long> owned : library.entrySet()) {
+        if (normalize(owned.getKey()).equals(normalized)) {
+          return owned.getValue();
+        }
+      }
+    }
+    Long base = dlcBaseCandidate(rawName, library);
+    return base != null ? base : ownedNameAtEnd(rawName, library);
+  }
+
+  // 이름 앞에 다른 언어 제목이 붙은 경우: "清零计划2：天启派对 Project Zero 2: Apocalypse Party" -> 보유 게임 "Apocalypse Party".
+  // 짧은 이름이 우연히 겹치지 않게, 보유 게임 이름이 8자 이상이고 바로 앞이 공백·구분자일 때만 인정한다.
+  public static Long ownedNameAtEnd(String rawName, Map<String, Long> library) {
+    String lower = MARKS.matcher(rawName).replaceAll("").toLowerCase(Locale.ROOT).trim();
+    String bestName = null;
+    Long best = null;
+    for (Map.Entry<String, Long> owned : library.entrySet()) {
+      String name = MARKS.matcher(owned.getKey()).replaceAll("").toLowerCase(Locale.ROOT).trim();
+      if (name.length() >= 8 && lower.length() > name.length() && lower.endsWith(name)
+          && SUFFIX_BOUNDARY.matcher(lower.substring(lower.length() - name.length() - 1, lower.length() - name.length())).matches()
+          && (bestName == null || name.length() > bestName.length())) {
+        bestName = name;
+        best = owned.getValue();
+      }
+    }
+    return best;
   }
 
   // "보유 게임 이름 + 구분자 + 무언가"로 시작하면 그 보유 게임을 DLC 본편 후보로 돌려준다. 여러 개면 가장 긴 이름.
