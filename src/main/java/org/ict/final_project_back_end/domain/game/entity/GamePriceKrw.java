@@ -23,7 +23,9 @@ import java.time.LocalDateTime;
 public class GamePriceKrw {
 
   public static final String PRICED = "PRICED";
-  // 가격 정보 없음(무료 게임 등)
+  // 무료 게임 (가격 정보가 없어서 is_free까지 확인한 경우, 금액 0원)
+  public static final String FREE = "FREE";
+  // 가격 정보 없음 (무료 여부를 아직 확인하지 못했거나 판매가가 없는 게임)
   public static final String NO_PRICE = "NO_PRICE";
   // 한국 상점에서 제공하지 않는 게임
   public static final String UNAVAILABLE = "UNAVAILABLE";

@@ -6,6 +6,7 @@ import org.ict.final_project_back_end.domain.game.entity.Game;
 import org.ict.final_project_back_end.domain.game.entity.GamePriceKrw;
 import org.ict.final_project_back_end.domain.game.repository.GamePriceKrwRepository;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import org.ict.final_project_back_end.domain.game.service.GamePriceKrwService;
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
@@ -14,7 +15,6 @@ import org.ict.final_project_back_end.global.exception.AuthenticationRequiredExc
 import org.ict.final_project_back_end.global.exception.SteamNotLinkedException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -25,8 +25,9 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+// 스팀 호출(가격 보충)이 섞여 있어서 클래스 전체에 트랜잭션을 걸지 않는다.
+// 각 조회/저장은 repository 단위로 짧게 끝나고, 외부 호출 동안 DB 연결을 붙잡지 않는다.
 @Service
-@Transactional(readOnly = true)
 public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
 
   private static final String PRICE_BASIS = "KRW_LIST_PRICE";
@@ -41,13 +42,16 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
   private final LibraryGameRepository libraryGameRepository;
   private final GameRepository gameRepository;
   private final GamePriceKrwRepository priceRepository;
+  private final GamePriceKrwService priceService;
 
   public SpendingAnalysisServiceImpl(UserRepository userRepository, LibraryGameRepository libraryGameRepository,
-                                     GameRepository gameRepository, GamePriceKrwRepository priceRepository) {
+                                     GameRepository gameRepository, GamePriceKrwRepository priceRepository,
+                                     GamePriceKrwService priceService) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.gameRepository = gameRepository;
     this.priceRepository = priceRepository;
+    this.priceService = priceService;
   }
 
   @Override
@@ -62,6 +66,8 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
 
     List<LibraryGame> owned = libraryGameRepository.findAllByUserIdOrderByNameAsc(userId);
     List<Long> appIds = owned.stream().map(LibraryGame::getAppId).toList();
+    // 가격이 없거나 하루 지난 보유 게임만 스팀에서 보충한다 (CSV에 없는 게임 포함)
+    priceService.ensurePrices(appIds);
     Map<Long, Game> games = gameRepository.findAllById(appIds).stream()
         .collect(Collectors.toMap(Game::getAppId, Function.identity()));
     Map<Long, GamePriceKrw> prices = priceRepository.findAllById(appIds).stream()
@@ -81,7 +87,7 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     if (price != null && GamePriceKrw.PRICED.equals(price.getStatus())) {
       amount = price.getInitialKrw();
       amountSource = "ESTIMATED";
-    } else if (isFree(game, price)) {
+    } else if ((price != null && GamePriceKrw.FREE.equals(price.getStatus())) || isFree(game, price)) {
       amount = 0;
       amountSource = "FREE";
     } else {
@@ -103,7 +109,7 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         owned.getLastPlayedAt());
   }
 
-  // 원화 가격 정보가 없고 CSV 달러 가격이 0이면 무료 게임으로 본다 (예: Dota 2, Counter-Strike 2)
+  // FREE로 확인되지 않았더라도 원화 가격 정보가 없고 CSV 달러 가격이 0이면 무료 게임으로 본다 (예: Dota 2)
   private boolean isFree(Game game, GamePriceKrw price) {
     if (game == null || game.getPriceInfo() == null) {
       return false;
