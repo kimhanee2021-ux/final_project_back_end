@@ -43,6 +43,8 @@ dependencies {
     implementation 'io.github.cdimascio:dotenv-java:3.0.0'
     /* 구글/카카오 소셜로그인(OAuth2 Client) 라이브러리 */
     implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+    /* games 시드용 CSV 파싱 라이브러리 (따옴표로 감싸인 콤마/개행 포함 필드를 안전하게 처리) */
+    implementation 'com.opencsv:opencsv:5.9'
 }
 
 tasks.named('test') {

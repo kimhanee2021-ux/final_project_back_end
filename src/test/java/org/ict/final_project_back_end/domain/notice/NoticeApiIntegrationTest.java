@@ -107,7 +107,8 @@ class NoticeApiIntegrationTest {
 
   @Test void invalidPaginationIsRejected() throws Exception {
     for (String query : new String[]{"page=-1", "size=0", "size=101", "page=abc"}) {
-      mvc.perform(get("/api/notices?" + query).header("Authorization", owner)).andExpect(status().isBadRequest());
+      mvc.perform(get("/api/notices?" + query).header("Authorization", owner)).andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
   }
 
@@ -117,6 +118,18 @@ class NoticeApiIntegrationTest {
     mvc.perform(post("/api/notices").contentType(MediaType.APPLICATION_JSON).content(BODY)).andExpect(status().isUnauthorized());
     mvc.perform(put("/api/notices/1").contentType(MediaType.APPLICATION_JSON).content(BODY)).andExpect(status().isUnauthorized());
     mvc.perform(delete("/api/notices/1")).andExpect(status().isUnauthorized());
+  }
+
+  @Test void errorsFollowTeamCodeContract() throws Exception {
+    long id = create(BODY);
+    mvc.perform(delete("/api/notices/{id}", id).header("Authorization", other))
+        .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("NOTICE_FORBIDDEN"));
+    mvc.perform(get("/api/notices/9223372036854775807").header("Authorization", owner))
+        .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("NOTICE_NOT_FOUND"));
+    mvc.perform(post("/api/notices").header("Authorization", owner)
+        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.errors.title").isNotEmpty()).andExpect(jsonPath("$.errors.content").isNotEmpty());
   }
 
   @Test void deletingAuthorAccountPreservesNoticeAndPreventsAnotherMemberTakingOwnership() throws Exception {

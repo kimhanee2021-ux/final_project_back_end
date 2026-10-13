@@ -46,5 +46,7 @@ out/
 
 claude.md
 
+
+*.csv
 # Local board image files
 /uploads/

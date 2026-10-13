@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = {BoardController.class, BoardCommentController.class})
 public class BoardValidationHandler {
-  public record ValidationError(String error, Map<String, String> errors) { }
+  public record ValidationError(String code, String error, Map<String, String> errors) { }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ValidationError> invalidInput(MethodArgumentNotValidException exception) {
@@ -18,6 +18,6 @@ public class BoardValidationHandler {
     exception.getBindingResult().getFieldErrors()
         .forEach(error -> errors.putIfAbsent(error.getField(), error.getDefaultMessage()));
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(new ValidationError("입력값을 확인해주세요.", errors));
+        .body(new ValidationError("VALIDATION_ERROR", "입력값을 확인해주세요.", errors));
   }
 }
