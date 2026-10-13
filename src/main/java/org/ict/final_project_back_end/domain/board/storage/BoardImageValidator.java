@@ -36,5 +36,5 @@ public class BoardImageValidator {
       }
     } catch(IOException | IllegalArgumentException e) { throw invalid("이미지 파일을 읽을 수 없습니다."); }
   }
-  private BoardImageException invalid(String message) { return new BoardImageException(HttpStatus.BAD_REQUEST, message); }
+  private BoardImageException invalid(String message) { return new BoardImageException(HttpStatus.BAD_REQUEST, "INVALID_BOARD_IMAGE", message); }
 }

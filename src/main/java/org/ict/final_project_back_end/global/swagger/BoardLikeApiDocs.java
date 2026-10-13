@@ -52,6 +52,7 @@ public interface BoardLikeApiDocs {
       Long postId
   );
 
+  // 응답을 200+바디로 유지하는 이유는 BoardLikeController.cancel()의 주석 참고.
   @Operation(
       summary = "좋아요 취소",
       description = "게시글에 등록한 좋아요를 취소한다. 좋아요를 누르지 않은 상태라면 그대로 현재 상태를 반환한다."

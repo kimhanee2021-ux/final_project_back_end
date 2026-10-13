@@ -9,6 +9,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateRequest;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateResponse;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostDetailResponse;
@@ -37,7 +41,7 @@ public interface BoardApiDocs {
       @Parameter(hidden = true)
       @AuthenticationPrincipal Long userId,
       @RequestBody(description = "게시글 작성 정보", required = true)
-      BoardPostCreateRequest request
+      @Valid BoardPostCreateRequest request
   );
 
   @Operation(
@@ -64,13 +68,13 @@ public interface BoardApiDocs {
   })
   ResponseEntity<BoardPostPageResponse> list(
       @Parameter(description = "페이지 번호(0부터 시작)", example = "0")
-      int page,
+      @Min(0) int page,
       @Parameter(description = "페이지 크기(1~100)", example = "20")
-      int size,
+      @Min(1) @Max(100) int size,
       @Parameter(description = "카테고리 필터(최대 30자)", example = "자유게시판")
-      String category,
+      @Size(max = 30) String category,
       @Parameter(description = "제목/내용 검색 키워드(최대 200자)", example = "스팀세일")
-      String keyword
+      @Size(max = 200) String keyword
   );
 
   @Operation(
@@ -92,7 +96,7 @@ public interface BoardApiDocs {
       @Parameter(description = "게시글 ID", required = true, example = "1")
       Long id,
       @RequestBody(description = "수정할 게시글 정보", required = true)
-      BoardPostUpdateRequest request
+      @Valid BoardPostUpdateRequest request
   );
 
   @Operation(

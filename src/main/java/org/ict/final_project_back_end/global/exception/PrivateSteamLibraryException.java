@@ -7,6 +7,6 @@ import org.springframework.http.HttpStatus;
 public class PrivateSteamLibraryException extends BusinessException {
 
   public PrivateSteamLibraryException() {
-    super(HttpStatus.BAD_REQUEST, "스팀 게임 목록이 비공개이거나 조회할 수 없습니다. 스팀 프로필의 게임 세부 정보를 공개로 설정해주세요");
+    super(HttpStatus.BAD_REQUEST, "PRIVATE_STEAM_LIBRARY", "스팀 게임 목록이 비공개이거나 조회할 수 없습니다. 스팀 프로필의 게임 세부 정보를 공개로 설정해주세요");
   }
 }
