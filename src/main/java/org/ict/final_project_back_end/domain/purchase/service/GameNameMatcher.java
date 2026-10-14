@@ -1,10 +1,13 @@
 package org.ict.final_project_back_end.domain.purchase.service;
 
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
 import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -63,6 +66,15 @@ public class GameNameMatcher {
   public GameNameMatcher(GameRepository gameRepository, SteamAppInfoClient steamAppInfoClient) {
     this.gameRepository = gameRepository;
     this.steamAppInfoClient = steamAppInfoClient;
+  }
+
+  // 보유 게임 목록을 매칭에 쓰는 "이름(원문) -> appId" 표로 바꾼다. 같은 이름이 여러 개면 처음 것.
+  public static Map<String, Long> libraryByName(List<LibraryGame> games) {
+    Map<String, Long> library = new HashMap<>();
+    for (LibraryGame game : games) {
+      library.putIfAbsent(game.getName(), game.getAppId());
+    }
+    return library;
   }
 
   // library: 내 보유 게임 이름(원문) -> appId

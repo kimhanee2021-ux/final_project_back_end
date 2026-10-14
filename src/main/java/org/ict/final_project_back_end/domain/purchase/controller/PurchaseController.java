@@ -3,6 +3,7 @@ package org.ict.final_project_back_end.domain.purchase.controller;
 import jakarta.validation.Valid;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportResponse;
+import org.ict.final_project_back_end.domain.purchase.dto.PurchaseDeleteResponse;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportResponse;
 import org.ict.final_project_back_end.domain.purchase.service.LicenseImportService;
@@ -16,9 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
-// 스팀 구매내역 가져오기 API. 실제 로직은 PurchaseImportService에 위임하고 HTTP 매핑만 담당한다.
+// 스팀 구매내역·라이선스 가져오기 API. 실제 로직은 PurchaseImportService·LicenseImportService에 위임하고 HTTP 매핑만 담당한다.
 @RestController
 @RequestMapping("/api/purchases")
 public class PurchaseController implements PurchaseApiDocs {
@@ -47,7 +46,7 @@ public class PurchaseController implements PurchaseApiDocs {
 
   @Override
   @DeleteMapping
-  public ResponseEntity<Map<String, Integer>> deleteAll(@AuthenticationPrincipal Long userId) {
-    return ResponseEntity.ok(Map.of("deleted", purchaseImportService.deleteAll(userId)));
+  public ResponseEntity<PurchaseDeleteResponse> deleteAll(@AuthenticationPrincipal Long userId) {
+    return ResponseEntity.ok(purchaseImportService.deleteAll(userId));
   }
 }

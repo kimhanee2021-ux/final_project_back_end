@@ -10,12 +10,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportResponse;
+import org.ict.final_project_back_end.domain.purchase.dto.PurchaseDeleteResponse;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
-import java.util.Map;
 
 // PurchaseController의 springdoc(OpenAPI) 문서화를 전담하는 인터페이스.
 @Tag(name = "Purchase", description = "스팀 구매내역 가져오기 API")
@@ -57,11 +56,12 @@ public interface PurchaseApiDocs {
       LicenseImportRequest request
   );
 
-  @Operation(summary = "가져온 구매내역·라이선스 모두 삭제", description = "다시 가져오기 전에 초기화할 때 사용한다. 응답: { deleted: 삭제한 거래 수 }")
+  @Operation(summary = "가져온 구매내역·라이선스 모두 삭제", description = "다시 가져오기 전에 초기화할 때 사용한다. 가져온 구매내역(거래·상품)과 라이선스를 모두 지우고, 삭제한 거래 수를 반환한다.")
   @SecurityRequirement(name = "bearerAuth")
   @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "삭제 성공"),
+      @ApiResponse(responseCode = "200", description = "삭제 성공",
+          content = @Content(schema = @Schema(implementation = PurchaseDeleteResponse.class))),
       @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content)
   })
-  ResponseEntity<Map<String, Integer>> deleteAll(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
+  ResponseEntity<PurchaseDeleteResponse> deleteAll(@Parameter(hidden = true) @AuthenticationPrincipal Long userId);
 }

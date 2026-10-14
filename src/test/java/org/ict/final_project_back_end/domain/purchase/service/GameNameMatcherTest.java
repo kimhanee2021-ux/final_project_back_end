@@ -61,8 +61,8 @@ class GameNameMatcherTest {
 
   @Test
   void convertsToWonWithRounding() {
-    assertEquals(7241, PurchaseImportService.toKrw(new BigDecimal("452"), new BigDecimal("16.019")));
-    assertEquals(36000, PurchaseImportService.toKrw(new BigDecimal("36000"), BigDecimal.ONE));
+    assertEquals(7241, PurchaseImportServiceImpl.toKrw(new BigDecimal("452"), new BigDecimal("16.019")));
+    assertEquals(36000, PurchaseImportServiceImpl.toKrw(new BigDecimal("36000"), BigDecimal.ONE));
   }
 
   @Test
