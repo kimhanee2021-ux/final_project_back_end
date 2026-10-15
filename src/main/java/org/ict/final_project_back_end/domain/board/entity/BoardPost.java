@@ -19,7 +19,7 @@ import org.ict.final_project_back_end.domain.user.entity.User;
 
 import java.time.LocalDateTime;
 
-// 게시판 본문(가성비랭킹/세일공유/방치게임인증/구매고민QNA/베타/공지)
+// 게시판 본문(가성비랭킹/세일공유/방치게임인증/구매고민QNA/베타)
 @Entity
 @Table(name = "board_posts")
 @Getter

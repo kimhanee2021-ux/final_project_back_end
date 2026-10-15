@@ -175,7 +175,7 @@ CREATE TABLE board_posts (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
   expires_at DATETIME NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='게시판 본문(가성비랭킹/세일공유/방치게임인증/구매고민QNA/베타/공지)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='게시판 본문(가성비랭킹/세일공유/방치게임인증/구매고민QNA/베타)';
 
 CREATE TABLE board_post_images (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
