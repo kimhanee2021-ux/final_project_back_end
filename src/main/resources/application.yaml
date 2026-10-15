@@ -38,6 +38,11 @@ steam:
 
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
+  ai:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-flash-latest}
+    worldcup-model: ${GEMINI_WORLDCUP_MODEL:gemini-3.5-flash-lite}
+    manager-model: ${GEMINI_MANAGER_MODEL:gemini-3.5-flash-lite}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
