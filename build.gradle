@@ -45,6 +45,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     /* games 시드용 CSV 파싱 라이브러리 (따옴표로 감싸인 콤마/개행 포함 필드를 안전하게 처리) */
     implementation 'com.opencsv:opencsv:5.9'
+    /* [추가] 리뷰 기능(domain/review)의 @Cacheable용 캐시 + Caffeine 라이브러리 */
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
 }
 
 tasks.named('test') {
