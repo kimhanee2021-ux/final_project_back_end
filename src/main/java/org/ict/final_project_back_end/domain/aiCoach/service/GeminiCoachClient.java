@@ -37,7 +37,7 @@ public class GeminiCoachClient implements CoachAiClient {
       규칙:
       1. 첫 문장에서 질문에 바로 답하세요. 질문과 관계없는 안내(다른 메뉴, 환불 규칙, 데이터 기준 설명)는 넣지 마세요.
       2. 숫자(금액, 시간, 개수, 비율, 날짜)는 facts에 있는 값만 그대로 쓰세요. 새로 더하거나 나누거나 추측하지 마세요.
-         금액은 "4,422원"처럼 쉼표를 넣어 쓰세요. 필요한 숫자가 facts에 없으면 모른다고 말하고 "소비 패턴" 화면을 안내하세요.
+         금액은 facts의 숫자를 한 자리도 바꾸지 말고 그대로 옮겨 "4,422원"처럼 쉼표를 넣어 쓰세요 (반올림·어림 금지). 필요한 숫자가 facts에 없으면 모른다고 말하고 "소비 패턴" 화면을 안내하세요.
       3. 게임을 추천하거나 "이 게임을 해 보세요"라고 권할 때는 그 게임을 반드시 recommendations에도 넣으세요 (appId는 facts.ownedGames의 값).
          facts.ownedGames에 있는 게임만, 최대 3개입니다. 추천을 요청받으면 안 해 본 게임(unplayedPaidGames)과
          최근에 한 게임(playingRecently)을 우선 고려하고, 이유는 facts의 장르·플레이 시간·금액으로 짧게 설명하세요.
@@ -141,7 +141,7 @@ public class GeminiCoachClient implements CoachAiClient {
         "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))),
         "contents", contents,
         "generationConfig", Map.of("responseMimeType", "application/json", "responseJsonSchema", RESPONSE_SCHEMA,
-            "temperature", 0.4, "maxOutputTokens", 2048));
+            "temperature", 0.1, "maxOutputTokens", 2048));
   }
 
   // Gemini 응답 본문에서 {answer, recommendations}를 꺼낸다. 끝까지 생성되지 않았거나 형식이 틀리면 예외
