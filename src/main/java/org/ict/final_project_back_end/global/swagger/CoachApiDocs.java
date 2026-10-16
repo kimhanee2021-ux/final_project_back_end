@@ -32,7 +32,7 @@ public interface CoachApiDocs {
       @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content),
       @ApiResponse(responseCode = "429", description = "질문이 너무 많음 (AI_RATE_LIMITED)", content = @Content),
       @ApiResponse(responseCode = "502", description = "AI 답변 형식 오류·보유하지 않은 게임 추천 (AI_INVALID_RESPONSE)", content = @Content),
-      @ApiResponse(responseCode = "503", description = "서버에 Gemini 키·모델 설정이 없음 (AI_NOT_CONFIGURED)", content = @Content),
+      @ApiResponse(responseCode = "503", description = "Gemini 키·모델 설정 없음(AI_NOT_CONFIGURED) 또는 두 번 다시 시도해도 Gemini 혼잡(AI_BUSY)", content = @Content),
       @ApiResponse(responseCode = "504", description = "AI 응답 시간 초과 (AI_TIMEOUT)", content = @Content)
   })
   ResponseEntity<CoachChatResponse> chat(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,

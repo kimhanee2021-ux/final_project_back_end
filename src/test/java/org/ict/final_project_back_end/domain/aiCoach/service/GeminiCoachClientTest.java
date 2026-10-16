@@ -46,6 +46,16 @@ class GeminiCoachClientTest {
   }
 
   @Test
+  void onlyServerSideOverloadIsRetried() {
+    for (int status : new int[]{500, 502, 503, 504}) {
+      assertTrue(GeminiCoachClient.isBusy(status), "retry " + status);
+    }
+    for (int status : new int[]{200, 400, 401, 403, 404, 429}) {
+      assertFalse(GeminiCoachClient.isBusy(status), "no retry " + status);
+    }
+  }
+
+  @Test
   void missingKeyMeansNotConfigured() {
     GeminiCoachClient client = new GeminiCoachClient("", "gemini-flash-latest", "http://localhost");
     AiCoachException e = assertThrows(AiCoachException.class, () -> client.reply(Map.of(), List.of(), "질문"));

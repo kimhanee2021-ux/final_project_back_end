@@ -18,6 +18,11 @@ public class AiCoachException extends BusinessException {
     return new AiCoachException(HttpStatus.TOO_MANY_REQUESTS, "AI_RATE_LIMITED", "질문이 많습니다. 잠시 후 다시 시도해 주세요");
   }
 
+  // Gemini가 다시 시도해도 계속 혼잡한 경우 (HTTP 500/502/503/504)
+  public static AiCoachException busy() {
+    return new AiCoachException(HttpStatus.SERVICE_UNAVAILABLE, "AI_BUSY", "지금 AI 이용자가 많아요. 잠시 후 다시 시도해 주세요");
+  }
+
   public static AiCoachException timeout() {
     return new AiCoachException(HttpStatus.GATEWAY_TIMEOUT, "AI_TIMEOUT", "AI 응답이 늦어지고 있습니다. 다시 시도해 주세요");
   }
