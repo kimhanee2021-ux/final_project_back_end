@@ -1,4 +1,4 @@
-package org.ict.final_project_back_end.domain.coach.dto;
+package org.ict.final_project_back_end.domain.aiCoach.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

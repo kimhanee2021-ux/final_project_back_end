@@ -1,7 +1,7 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
 import org.ict.final_project_back_end.global.exception.AiCoachException;
 import org.junit.jupiter.api.Test;
 

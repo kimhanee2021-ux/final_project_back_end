@@ -1,9 +1,9 @@
-package org.ict.final_project_back_end.domain.coach.controller;
+package org.ict.final_project_back_end.domain.aiCoach.controller;
 
 import jakarta.validation.Valid;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatResponse;
-import org.ict.final_project_back_end.domain.coach.service.CoachService;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatResponse;
+import org.ict.final_project_back_end.domain.aiCoach.service.CoachService;
 import org.ict.final_project_back_end.global.swagger.CoachApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 // AI 게임 소비 코치 API. 실제 로직은 CoachService에 위임하고 HTTP 매핑만 담당한다.
 @RestController
-@RequestMapping("/api/coach")
+@RequestMapping("/api/ai/coach")
 public class CoachController implements CoachApiDocs {
 
   private final CoachService coachService;

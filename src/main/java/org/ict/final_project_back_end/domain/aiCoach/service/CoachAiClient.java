@@ -1,6 +1,6 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
 
 import java.util.List;
 import java.util.Map;

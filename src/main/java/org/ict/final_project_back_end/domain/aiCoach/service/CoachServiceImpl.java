@@ -1,12 +1,12 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingAnalysisResponse;
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingGameResponse;
 import org.ict.final_project_back_end.domain.analysis.service.SpendingAnalysisService;
 import org.ict.final_project_back_end.domain.budget.service.BudgetService;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatResponse;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatResponse;
 import org.ict.final_project_back_end.global.exception.AiCoachException;
 import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
 import org.springframework.stereotype.Service;

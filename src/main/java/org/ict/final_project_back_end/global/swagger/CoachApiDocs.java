@@ -8,13 +8,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatResponse;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 // CoachController의 springdoc(OpenAPI) 문서화를 전담하는 인터페이스.
-@Tag(name = "Coach", description = "AI 게임 소비 코치 API")
+@Tag(name = "AI Coach", description = "AI 게임 소비 코치 API")
 public interface CoachApiDocs {
 
   @Operation(

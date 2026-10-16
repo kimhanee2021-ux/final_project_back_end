@@ -1,10 +1,10 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatRequest;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatRequest;
 import org.ict.final_project_back_end.global.exception.AiCoachException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

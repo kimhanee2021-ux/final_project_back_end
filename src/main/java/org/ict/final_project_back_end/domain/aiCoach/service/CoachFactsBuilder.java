@@ -1,4 +1,4 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingAnalysisResponse;
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingGameResponse;

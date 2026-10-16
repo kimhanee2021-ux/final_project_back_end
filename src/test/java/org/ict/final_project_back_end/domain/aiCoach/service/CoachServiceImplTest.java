@@ -1,7 +1,7 @@
-package org.ict.final_project_back_end.domain.coach.service;
+package org.ict.final_project_back_end.domain.aiCoach.service;
 
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingGameResponse;
-import org.ict.final_project_back_end.domain.coach.dto.CoachChatResponse;
+import org.ict.final_project_back_end.domain.aiCoach.dto.CoachChatResponse;
 import org.ict.final_project_back_end.global.exception.AiCoachException;
 import org.junit.jupiter.api.Test;
 
