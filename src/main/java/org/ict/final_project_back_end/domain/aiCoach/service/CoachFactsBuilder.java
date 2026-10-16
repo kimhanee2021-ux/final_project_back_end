@@ -45,7 +45,7 @@ public final class CoachFactsBuilder {
         : "현재 한국 스팀 정가로 추정한 금액 (구매내역을 아직 가져오지 않음, 실제 결제액·구매일 없음)");
     facts.put("totals", totals(spending, games, paid));
     if (history) {
-      facts.put("spendingByYear", byYear(spending.transactions()));
+      facts.put("spendingByYear", byYear(spending.transactions(), today.getYear()));
       facts.put("spendingByMonthLast12", byMonth(spending.transactions(), today));
     }
     facts.put("thisMonth", thisMonth(spending, budget, today));
@@ -92,7 +92,13 @@ public final class CoachFactsBuilder {
     return games.stream().filter(g -> source.equals(g.amountSource())).count();
   }
 
-  private static List<Map<String, Object>> byYear(List<SpendingAnalysisResponse.PurchaseView> transactions) {
+  // relative: AI가 "작년"을 엉뚱한 해로 읽지 않게 올해(진행 중)/작년/N년 전을 함께 적는다
+  private static String relativeYear(int year, int thisYear) {
+    int diff = thisYear - year;
+    return diff == 0 ? "올해(진행 중)" : diff == 1 ? "작년" : diff + "년 전";
+  }
+
+  private static List<Map<String, Object>> byYear(List<SpendingAnalysisResponse.PurchaseView> transactions, int thisYear) {
     Map<Integer, int[]> years = new TreeMap<>(Comparator.reverseOrder());
     for (SpendingAnalysisResponse.PurchaseView t : transactions) {
       int[] sums = years.computeIfAbsent(t.purchasedAt().getYear(), y -> new int[2]);
@@ -102,7 +108,8 @@ public final class CoachFactsBuilder {
       }
     }
     List<Map<String, Object>> result = new ArrayList<>();
-    years.forEach((year, sums) -> result.add(row("year", year, "spentKrw", Math.max(0, sums[0]), "purchases", sums[1])));
+    years.forEach((year, sums) -> result.add(row("year", year, "relative", relativeYear(year, thisYear),
+        "spentKrw", Math.max(0, sums[0]), "purchases", sums[1])));
     return result;
   }
 

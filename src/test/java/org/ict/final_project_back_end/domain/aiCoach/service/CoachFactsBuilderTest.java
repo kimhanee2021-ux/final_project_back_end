@@ -85,6 +85,9 @@ class CoachFactsBuilderTest {
     assertEquals(26000, month.get("remainingBudgetKrw"));
     List<Map<String, Object>> years = get(facts, "spendingByYear");
     assertEquals(2026, years.get(0).get("year"));
+    // AI가 "작년"을 잘못 짚지 않도록 올해/작년 라벨을 붙인다 (2024를 작년이라고 답한 사례)
+    assertEquals("올해(진행 중)", years.get(0).get("relative"));
+    assertEquals("작년", years.get(1).get("relative"));
     assertEquals(4000, years.get(0).get("spentKrw"));
     assertEquals(1, years.get(0).get("purchases"));
     List<Map<String, Object>> months = get(facts, "spendingByMonthLast12");
