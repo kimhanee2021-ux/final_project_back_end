@@ -1,6 +1,7 @@
 package org.ict.final_project_back_end.domain.user.service;
 
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
+import org.ict.final_project_back_end.domain.budget.repository.BudgetRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
@@ -23,17 +24,20 @@ public class UserServiceImpl implements UserService {
   private final LibraryGameRepository libraryGameRepository;
   private final PurchaseTransactionRepository purchaseTransactionRepository;
   private final GameLicenseRepository gameLicenseRepository;
+  private final BudgetRepository budgetRepository;
   private final PasswordEncoder passwordEncoder;
 
   public UserServiceImpl(UserRepository userRepository,
                          LibraryGameRepository libraryGameRepository,
                          PurchaseTransactionRepository purchaseTransactionRepository,
                          GameLicenseRepository gameLicenseRepository,
+                         BudgetRepository budgetRepository,
                          PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.purchaseTransactionRepository = purchaseTransactionRepository;
     this.gameLicenseRepository = gameLicenseRepository;
+    this.budgetRepository = budgetRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -84,6 +88,7 @@ public class UserServiceImpl implements UserService {
     User user = findUser(userId);
     libraryGameRepository.deleteByUserId(userId);
     gameLicenseRepository.deleteByUserId(userId);
+    budgetRepository.deleteByUserId(userId);
     purchaseTransactionRepository.deleteItemsByUserId(userId);
     purchaseTransactionRepository.deleteTransactionsByUserId(userId);
     userRepository.delete(user);
