@@ -83,16 +83,37 @@ class CoachFactsBuilderTest {
     Map<String, Object> month = get(facts, "thisMonth");
     assertEquals(4000, month.get("spentKrw"));
     assertEquals(26000, month.get("remainingBudgetKrw"));
-    List<Map<String, Object>> years = get(facts, "spendingByYear");
-    assertEquals(2026, years.get(0).get("year"));
+    // 연도·월은 AI가 {{spendingByYear.2025.spentKrw}}처럼 정확히 가리키도록 키로 찾는 표다
+    Map<String, Map<String, Object>> years = get(facts, "spendingByYear");
+    assertEquals(List.of("2026", "2025"), List.copyOf(years.keySet()));
     // AI가 "작년"을 잘못 짚지 않도록 올해/작년 라벨을 붙인다 (2024를 작년이라고 답한 사례)
-    assertEquals("올해(진행 중)", years.get(0).get("relative"));
-    assertEquals("작년", years.get(1).get("relative"));
-    assertEquals(4000, years.get(0).get("spentKrw"));
-    assertEquals(1, years.get(0).get("purchases"));
-    List<Map<String, Object>> months = get(facts, "spendingByMonthLast12");
+    assertEquals("올해(진행 중)", years.get("2026").get("relative"));
+    assertEquals("작년", years.get("2025").get("relative"));
+    assertEquals(4000, years.get("2026").get("spentKrw"));
+    assertEquals(1, years.get("2026").get("purchases"));
+    Map<String, Map<String, Object>> months = get(facts, "spendingByMonthLast12");
     assertEquals(12, months.size());
-    assertEquals("2026-10", months.get(11).get("month"));
+    assertEquals(4000, months.get("2026-10").get("spentKrw"));
+  }
+
+  @Test
+  void comparisonsArePrecomputedSoTheAiNeverSubtracts() {
+    List<PurchaseView> transactions = List.of(
+        new PurchaseView(LocalDate.of(2026, 10, 10), "PURCHASE", 5000, 2L, List.of("Ori 2"), 4000),
+        new PurchaseView(LocalDate.of(2025, 3, 1), "PURCHASE", 20000, 1L, List.of("Dead Cells"), 10000));
+    Map<String, Object> facts = CoachFactsBuilder.build(history(games, transactions), null, TODAY);
+    Map<String, Map<String, Object>> comparisons = get(facts, "comparisons");
+    Map<String, Object> year = comparisons.get("thisYearVsLastYear");
+    assertEquals(15000, year.get("changeKrw"));
+    assertEquals("감소", year.get("direction"));
+    assertEquals(75L, year.get("changePercent"));
+    // 최근 12개월(2025-11 ~ 2026-10)에는 2025년 3월 구매가 들어가지 않는다
+    assertEquals(5000, comparisons.get("last12Months").get("spentKrw"));
+    Map<String, Object> habit = get(facts, "discountHabit");
+    // 할인 구매 2개 중 1개 미플레이(50%), 정가 구매 1개 중 0개(0%) -> 차이 50
+    assertEquals(50L, habit.get("unplayedPercentGap"));
+    Map<String, Map<String, Object>> owned = get(facts, "ownedGames");
+    assertEquals("Dead Cells", owned.get("1").get("name"));
   }
 
   @Test

@@ -45,8 +45,11 @@ public final class CoachFactsBuilder {
         : "현재 한국 스팀 정가로 추정한 금액 (구매내역을 아직 가져오지 않음, 실제 결제액·구매일 없음)");
     facts.put("totals", totals(spending, games, paid));
     if (history) {
-      facts.put("spendingByYear", byYear(spending.transactions(), today.getYear()));
-      facts.put("spendingByMonthLast12", byMonth(spending.transactions(), today));
+      Map<String, Map<String, Object>> years = byYear(spending.transactions(), today.getYear());
+      facts.put("spendingByYear", years);
+      Map<String, Map<String, Object>> months = byMonth(spending.transactions(), today);
+      facts.put("spendingByMonthLast12", months);
+      facts.put("comparisons", comparisons(years, months, today.getYear()));
     }
     facts.put("thisMonth", thisMonth(spending, budget, today));
     facts.put("spendingByGenre", byGenre(paid));
@@ -98,7 +101,7 @@ public final class CoachFactsBuilder {
     return diff == 0 ? "올해(진행 중)" : diff == 1 ? "작년" : diff + "년 전";
   }
 
-  private static List<Map<String, Object>> byYear(List<SpendingAnalysisResponse.PurchaseView> transactions, int thisYear) {
+  private static Map<String, Map<String, Object>> byYear(List<SpendingAnalysisResponse.PurchaseView> transactions, int thisYear) {
     Map<Integer, int[]> years = new TreeMap<>(Comparator.reverseOrder());
     for (SpendingAnalysisResponse.PurchaseView t : transactions) {
       int[] sums = years.computeIfAbsent(t.purchasedAt().getYear(), y -> new int[2]);
@@ -107,13 +110,13 @@ public final class CoachFactsBuilder {
         sums[1]++;
       }
     }
-    List<Map<String, Object>> result = new ArrayList<>();
-    years.forEach((year, sums) -> result.add(row("year", year, "relative", relativeYear(year, thisYear),
+    Map<String, Map<String, Object>> result = new LinkedHashMap<>();
+    years.forEach((year, sums) -> result.put(String.valueOf(year), row("relative", relativeYear(year, thisYear),
         "spentKrw", Math.max(0, sums[0]), "purchases", sums[1])));
     return result;
   }
 
-  private static List<Map<String, Object>> byMonth(List<SpendingAnalysisResponse.PurchaseView> transactions, LocalDate today) {
+  private static Map<String, Map<String, Object>> byMonth(List<SpendingAnalysisResponse.PurchaseView> transactions, LocalDate today) {
     LocalDate first = today.withDayOfMonth(1).minusMonths(11);
     Map<String, Integer> months = new TreeMap<>();
     for (LocalDate m = first; !m.isAfter(today); m = m.plusMonths(1)) {
@@ -122,8 +125,30 @@ public final class CoachFactsBuilder {
     for (SpendingAnalysisResponse.PurchaseView t : transactions) {
       months.computeIfPresent(t.purchasedAt().toString().substring(0, 7), (k, v) -> v + t.amountKrw());
     }
-    List<Map<String, Object>> result = new ArrayList<>();
-    months.forEach((month, spent) -> result.add(row("month", month, "spentKrw", Math.max(0, spent))));
+    Map<String, Map<String, Object>> result = new LinkedHashMap<>();
+    months.forEach((month, spent) -> result.put(month, row("spentKrw", Math.max(0, spent))));
+    return result;
+  }
+
+  // AI가 직접 빼거나 나누지 않도록 자주 묻는 비교를 미리 계산한다 (차이는 절댓값 + direction)
+  private static Map<String, Object> comparisons(Map<String, Map<String, Object>> years,
+                                                 Map<String, Map<String, Object>> months, int thisYear) {
+    Map<String, Object> result = new LinkedHashMap<>();
+    Map<String, Object> current = years.get(String.valueOf(thisYear));
+    Map<String, Object> previous = years.get(String.valueOf(thisYear - 1));
+    if (current != null && previous != null) {
+      int now = (int) current.get("spentKrw");
+      int before = (int) previous.get("spentKrw");
+      result.put("thisYearVsLastYear", row(
+          "thisYear", thisYear, "lastYear", thisYear - 1,
+          "thisYearSpentKrw", now, "lastYearSpentKrw", before,
+          "changeKrw", Math.abs(now - before),
+          "direction", now < before ? "감소" : now > before ? "증가" : "같음",
+          "changePercent", before == 0 ? null : Math.round(Math.abs(now - before) * 100.0 / before),
+          "note", "올해는 아직 진행 중이라 연간 합계가 아님"));
+    }
+    int last12 = months.values().stream().mapToInt(m -> (int) m.get("spentKrw")).sum();
+    result.put("last12Months", row("spentKrw", last12, "averagePerMonthKrw", Math.round(last12 / 12.0)));
     return result;
   }
 
@@ -174,7 +199,14 @@ public final class CoachFactsBuilder {
         "discountedUnplayedPercent", percent(unplayedCount(discounted), discounted.size()),
         "fullPriceGames", fullPrice.size(),
         "fullPriceUnplayed", unplayedCount(fullPrice),
-        "fullPriceUnplayedPercent", percent(unplayedCount(fullPrice), fullPrice.size()));
+        "fullPriceUnplayedPercent", percent(unplayedCount(fullPrice), fullPrice.size()),
+        // 할인 구매 미플레이 비율 - 정가 구매 미플레이 비율 (양수면 할인 때 산 게임을 더 안 함)
+        "unplayedPercentGap", gap(percent(unplayedCount(discounted), discounted.size()),
+            percent(unplayedCount(fullPrice), fullPrice.size())));
+  }
+
+  private static Long gap(Long a, Long b) {
+    return a == null || b == null ? null : a - b;
   }
 
   private static long unplayedCount(List<SpendingGameResponse> games) {
@@ -223,7 +255,7 @@ public final class CoachFactsBuilder {
   }
 
   // 추천 후보가 되는 보유 게임 표. 많이 한 게임, 비싼 게임 순으로 최대 MAX_GAMES개
-  private static List<Map<String, Object>> ownedGames(List<SpendingGameResponse> games) {
+  private static Map<String, Map<String, Object>> ownedGames(List<SpendingGameResponse> games) {
     return games.stream()
         .sorted(Comparator.comparingDouble(SpendingGameResponse::hours).reversed()
             .thenComparing(Comparator.comparingInt(CoachFactsBuilder::net).reversed()))
@@ -243,7 +275,8 @@ public final class CoachFactsBuilder {
           row.put("acquisitionMethod", g.acquisitionMethod());
           return row;
         })
-        .toList();
+        .collect(LinkedHashMap<String, Map<String, Object>>::new,
+            (map, row) -> map.put(String.valueOf(row.get("appId")), row), Map::putAll);
   }
 
   private static String genre(SpendingGameResponse game) {
