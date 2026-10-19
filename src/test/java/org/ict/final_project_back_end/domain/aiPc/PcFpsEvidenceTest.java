@@ -15,4 +15,6 @@ class PcFpsEvidenceTest {
   assertFalse(payload.contains("averageFps"));assertFalse(payload.contains("44.2"));assertFalse(payload.contains("40.8"));
   assertEquals(44.0,PcFpsEvidence.find(pc("Intel UHD Graphics 770"),570,"FHD").projection().averageFps());
  }
+ @Test void cs2DifferentCpuRemainsReferenceOnly(){var data=PcFpsEvidence.find(pc("Intel UHD Graphics 770"),730,"FHD");assertEquals("REFERENCE_ONLY",data.status());assertEquals(3,data.samples().size());assertNull(data.projection());assertEquals(17.6,data.samples().get(2).averageFps());}
+ @Test void lowPresetIsNeverRelabeledHigh(){var data=PcFpsEvidence.find(pc("Intel UHD Graphics 770"),1286680,"FHD");assertTrue(data.preset().contains("Low"));assertFalse(data.preset().contains("High"));assertEquals(16.0,data.projection().averageFps());}
 }

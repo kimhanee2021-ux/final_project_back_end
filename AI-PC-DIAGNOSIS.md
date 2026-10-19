@@ -150,3 +150,9 @@
 
 ### 최종 후속 검증 — 2026-10-19 19:55
 사용자가 BAT3 재실행: front57 테스트/lint/build PASS, backend 전체203 실패오류0. A~E/버튼/AI FPS context 및 회귀 포함. 수정 후 BAT7 실제 Groq Dota2 READY도 확인. 실제 UI 등급 렌더링의 별도 자동 브라우저 검증은 미실행.
+
+
+## FPS 추가 조사(미검증 후속)
+CS2 다른CPU FHD3옵션, 타이니 티나 동일CPU FHD Low1건 추가: 실측자료3→7건/게임2→4종. Low를High로 변환하지 않으며 CS2는 다른CPU 참고전용. 보유상위5 중 PUBG720p/Overwatch80%scale는FHD로 미채택, Isaac/HollowKnight명확한평균실측미확보. 상세 outputs/PC-FPS-추가조사-2026-10-19.md. 이 변경의 테스트는 사용자 BAT2 대기, 전체게임등급완료아님.
+
+2026-10-19 20:12 사용자 BAT2 검증: backend 전체205, 실패/오류0 및 BUILD SUCCESSFUL. 추가FPS자료/옵션구분 회귀 통과. 새 자료의 실제 AI 재호출은 하지 않았으며, 앞선 Dota2 READY 검증과 구분.
