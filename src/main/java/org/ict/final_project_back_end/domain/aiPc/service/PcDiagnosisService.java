@@ -35,10 +35,12 @@ public class PcDiagnosisService {
   limit.begin(id);try{
    var source=requirements.get(request.appId());if(!source.windows())throw new AiException(BAD_REQUEST,"Windows PC 지원이 확인되지 않은 게임이에요.");
    var comparison=PcRules.compare(pc,source.minimum());
+   String stage="PART_OFFERS";
    try{
-    var offers=parts.offers(id);if(offers==null)offers=List.of();var answer=gemini.explain(pc,source,comparison,offers);var recommendations=PcAiRecommendations.parse(answer,offers);var aiGrade=PcAiAssessment.grade(answer,comparison);
+    var offers=parts.offers(id);if(offers==null)offers=List.of();stage="AI_EXPLANATION";var answer=gemini.explain(pc,source,comparison,offers);stage="RECOMMENDATION_VALIDATION";var recommendations=PcAiRecommendations.parse(answer,offers);stage="GRADE_VALIDATION";var aiGrade=PcAiAssessment.grade(answer,comparison);stage="TEXT_VALIDATION";
     return new PcDiagnosis.Assessment(source.appId(),source.name(),aiGrade,comparison.checks(),gemini.explanation(answer,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(answer,"fhd",600),PcFpsEvidence.find(pc,source.appId(),"FHD")),new PcDiagnosis.Resolution("QHD",gemini.explanation(answer,"qhd",600),PcFpsEvidence.find(pc,source.appId(),"QHD")),new PcDiagnosis.Resolution("4K",gemini.explanation(answer,"uhd",600),PcFpsEvidence.find(pc,source.appId(),"4K"))),gemini.list(answer,"settings"),gemini.list(answer,"upgradeChecks"),gemini.explanation(answer,"limitation",800),source,"READY",recommendations);
    }catch(AiException failure){
+    org.slf4j.LoggerFactory.getLogger(PcDiagnosisService.class).warn("PC assessment failure: stage={}, status={}",stage,failure.getStatus().value());
     if(!Set.of(BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT,TOO_MANY_REQUESTS).contains(failure.getStatus()))throw failure;
     // 공식 근거와 코드 비교는 이미 확보했다. 외부 해설 실패를 성공한 AI 답변처럼 꾸미지 않는다.
     boolean rateLimited=failure.getStatus()==TOO_MANY_REQUESTS;

@@ -67,16 +67,27 @@ public class GeminiPcClient extends GeminiSupport {
    upgradeChecks는 CPU/GPU/RAM/SSD뿐 아니라 보드소켓·BIOS, 전원용량·보조전원, 케이스공간, 쿨러/발열 등 필요한 호환정보를 조건부로 제시하세요.
    summary에서 이 PC와 게임의 주요 제약과 판단 이유를 분석하세요. 자료로 확인되지 않은 성능 서열은 추측하지 말고 필요한 비교 자료를 설명하세요.
    ruleChecks에 CPU/GPU 직접 비교 근거가 없다고 나오면 그 부품이 최소/권장 사양을 충족한다고 단정하지 마세요. 세대 숫자나 제품명 인상만으로 성능 서열을 추측하지 마세요. RAM/저장공간 용량 충족과 CPU/GPU 성능 충족은 분리하세요.
-   fpsReferences는 외부 PC의 과거 평균FPS 실측입니다. 현재 PC 실측이나 검증된 예측이 아닙니다. fpsProjections가 있으면 동일 CPU/GPU 과거 실측을 반올림한 저신뢰 참고 예상이며 RAM 세대/채널/속도 차이는 보정하지 못합니다. 추천이나 성능 보장으로 확정하지 마세요. CPU/RAM/게임빌드/옵션 차이와 자료 한계를 정성적으로 설명하고 새 FPS 숫자나 배율 추정을 생성하지 마세요. 숫자는 서버의 측정근거 UI에서만 표시합니다.
+   fpsContext는 해상도별 외부 측정 조건과 한계입니다. REFERENCE_PROJECTION은 동일 CPU/GPU 과거 자료의 저신뢰 참고 예상이고 REFERENCE_ONLY는 외부 PC 참고이며 NO_DATA는 근거 부족입니다. 현재 PC 실측이나 정확도 검증된 예측이 아닙니다. RAM 세대/채널/속도 차이는 보정하지 못합니다. fhd/qhd/uhd 문장에는 숫자 FPS를 절대 쓰지 말고 '아래 참고 수치를 확인하세요'처럼 안내하세요. 숫자는 서버가 별도 표시합니다. 제공 조건과 한계만 정성적으로 해설하세요.
    offers는 전체 시장이 아니라 조사된 비교 후보입니다. recommendations는 이 PC/게임의 확인된 문제 개선을 위해 검토할 후보만 최대3개 선택하세요.
    확인된 부족을 개선하거나 미확인 조건을 해소하기 위한 조건부 검토 후보만 고르세요. 교체 필요성이 확인되지 않으면 빈 배열로 두고 summary에 이유를 설명하세요. 비싸거나 최신이라는 이유로 추천하지 마세요.
    OBSERVED이고 priceKrw가 양수인 후보만 productCode 문자열로 선택. 상품명/가격/URL/할인율을 생성하지 마세요.
    reason은 현재 PC/게임 근거와 연결하고, compatibilityNote에는 확인되지 않은 보드/전원/공간 등 장착 조건을 구체적으로 설명하세요. 호환이나 향상 수치를 확정하지 마세요.
    recommendations 각 reason/compatibilityNote는400자 이하. 공식할인과 이전관측가 하락을 혼동하지 마세요.
    JSON {grade,summary,fhd,qhd,uhd,settings:string[],upgradeChecks:string[],limitation,recommendations:[{productCode,reason,compatibilityNote}]}만 답하세요.
-   """,List.of(Map.of("text",json.writeValueAsString(Map.of("specs",pc,"requirements",requirements,"ruleGrade",comparison.grade(),"ruleChecks",comparison.checks(),"offers",offers,"fpsReferences",PcFpsEvidence.references(pc,requirements.appId()),"fpsProjections",PcFpsEvidence.projections(pc,requirements.appId()))))),schema(Map.of("grade",Map.of("type","string","enum",List.of("O","X")),"summary",string(),"fhd",string(),"qhd",string(),"uhd",string(),"settings",strings(),"upgradeChecks",strings(),"limitation",string(),"recommendations",Map.of("type","array","maxItems",3,"items",schema(Map.of("productCode",string(),"reason",string(),"compatibilityNote",string()))))));
-  }catch(AiException e){throw e;}catch(Exception e){throw invalid();}
+   """,List.of(Map.of("text",json.writeValueAsString(Map.of("specs",pc,"requirements",requirements,"ruleGrade",comparison.grade(),"ruleChecks",comparison.checks(),"offers",offers,"fpsContext",PcFpsEvidence.explanationContext(pc,requirements.appId()))))),schema(Map.of("grade",Map.of("type","string","enum",List.of("O","X")),"summary",string(),"fhd",string(),"qhd",string(),"uhd",string(),"settings",strings(),"upgradeChecks",strings(),"limitation",string(),"recommendations",Map.of("type","array","maxItems",3,"items",schema(Map.of("productCode",string(),"reason",string(),"compatibilityNote",string()))))));
+  }catch(AiException e){log.warn("PC AI explanation failed: status={}",e.getStatus().value());throw e;}catch(Exception e){log.warn("PC AI explanation preparation failed: {}",e.getClass().getSimpleName());throw invalid();}
  }
- public String explanation(JsonNode n,String key,int max){String text=checkedString(n.path(key),max,false);if(text.matches("(?is).*\\d+\\s*(fps|프레임).*"))throw invalid();return text;}
- public List<String> list(JsonNode n,String key){var values=checkedList(n.path(key));if(values.stream().anyMatch(text->text.matches("(?is).*\\d+\\s*(fps|프레임).*")))throw invalid();return values;}
+ public String explanation(JsonNode n,String key,int max){
+  JsonNode value=n.path(key);
+  if(!value.isTextual()||value.asText().isBlank()||value.asText().length()>max){log.warn("PC AI text rejected: field={}, cause=TYPE_EMPTY_OR_LENGTH, textual={}, length={}, max={}",key,value.isTextual(),value.asText("").length(),max);throw invalid();}
+  String text=value.asText();
+  if(text.matches("(?is).*\\d+\\s*(fps|프레임).*")){log.warn("PC AI text rejected: field={}, cause=NUMERIC_FPS",key);throw invalid();}
+  return text;
+ }
+ public List<String> list(JsonNode n,String key){
+  List<String> values;
+  try{values=checkedList(n.path(key));}catch(AiException failure){log.warn("PC AI list rejected: field={}, cause=TYPE_COUNT_OR_LENGTH",key);throw failure;}
+  if(values.stream().anyMatch(text->text.matches("(?is).*\\d+\\s*(fps|프레임).*"))){log.warn("PC AI list rejected: field={}, cause=NUMERIC_FPS",key);throw invalid();}
+  return values;
+ }
 }

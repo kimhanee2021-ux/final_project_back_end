@@ -16,6 +16,16 @@ public final class PcFpsEvidence {
  public static PcFps.Evidence find(PcSpecs pc,long appId,String resolution){return select(pc,appId,resolution,SAMPLES);}
  public static List<PcFps.Sample> references(PcSpecs pc,long appId){return SAMPLES.stream().filter(s->s.appId()==appId&&key(s.gpu()).equals(key(pc.gpuModel()))).toList();}
  public static Map<String,PcFps.Projection> projections(PcSpecs pc,long appId){var result=new LinkedHashMap<String,PcFps.Projection>();for(String resolution:List.of("FHD","QHD","4K")){var evidence=find(pc,appId,resolution);if(evidence.projection()!=null)result.put(resolution,evidence.projection());}return Map.copyOf(result);}
+ /** AI는 조건/한계만 해설하고 수치는 검증된 서버 응답 영역에서 표시한다. */
+ public static Map<String,Object> explanationContext(PcSpecs pc,long appId){
+  var context=new LinkedHashMap<String,Object>();
+  for(String resolution:List.of("FHD","QHD","4K")){
+   var evidence=find(pc,appId,resolution);
+   var conditions=evidence.samples().stream().map(sample->Map.of("cpu",sample.cpu(),"gpu",sample.gpu(),"ramDetails",sample.ramDetails(),"preset",sample.preset(),"measuredAt",sample.measuredAt(),"gameBuild",sample.gameBuild(),"sourceUrl",sample.sourceUrl())).toList();
+   context.put(resolution,Map.of("status",evidence.status(),"confidence",evidence.confidence(),"conditions",conditions,"limitations",evidence.notes(),"numericDisplay","수치는 서버의 참고 FPS 영역에서 별도 표시. 설명 문장에 FPS 숫자를 쓰지 마세요."));
+  }
+  return Map.copyOf(context);
+ }
  public static PcFps.Evidence select(PcSpecs pc,long appId,String resolution,List<PcFps.Sample> samples){
   var matching=samples.stream().filter(s->s.appId()==appId&&s.resolution().equals(resolution)&&key(s.gpu()).equals(key(pc.gpuModel()))&&Double.isFinite(s.averageFps())&&s.averageFps()>0&&s.sourceUrl().startsWith("https://www.notebookcheck.net/")).toList();
   if(matching.isEmpty())return new PcFps.Evidence("NO_DATA",null,null,"","NONE",List.of(),List.of("같은 GPU·게임·해상도의 검증된 실측 자료를 아직 확보하지 못했어요. 해상도 배율로 FPS를 추측하지 않아요."));

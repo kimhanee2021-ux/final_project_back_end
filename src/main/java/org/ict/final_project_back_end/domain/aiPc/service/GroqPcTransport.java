@@ -50,7 +50,7 @@ public class GroqPcTransport {
    nextRequestAt=System.currentTimeMillis()+minIntervalMillis;
    tokensRemaining=response.headers().firstValueAsLong("x-ratelimit-remaining-tokens").orElse(Long.MAX_VALUE);
    long reset=resetDelayMillis(response.headers().firstValue("x-ratelimit-reset-tokens").orElse(""));tokenResetAt=System.currentTimeMillis()+(tokensRemaining==Long.MAX_VALUE?0:Math.max(reset,60000));
-   if(response.statusCode()!=200)log.warn("PC Groq request failed: HTTP {}",response.statusCode());
+   if(response.statusCode()!=200){String code="unknown";if(response.body().length<=131072){try{String rawCode=json.readTree(response.body()).path("error").path("code").asText("unknown");if(rawCode.matches("[a-zA-Z0-9_-]{1,64}"))code=rawCode;}catch(Exception ignored){}}log.warn("PC Groq request failed: HTTP {}, code={}",response.statusCode(),code);}
    if(response.statusCode()==429){
     if(response.body().length<=131072){try{String message=json.readTree(response.body()).path("error").path("message").asText();String lower=message.toLowerCase(Locale.ROOT);log.warn("PC Groq quota numbers: limit={}, used={}, requested={}, tokenMinute={}, tokenDay={}, requestMinute={}, requestDay={}",quotaNumber(message,"Limit"),quotaNumber(message,"Used"),quotaNumber(message,"Requested"),lower.contains("tpm")||lower.contains("tokens per minute"),lower.contains("tpd")||lower.contains("tokens per day"),lower.contains("rpm")||lower.contains("requests per minute"),lower.contains("rpd")||lower.contains("requests per day"));}catch(Exception ignored){/* 공급자 본문은 로그로 남기지 않는다. */}}
     throw new AiException(TOO_MANY_REQUESTS,"Groq 이용 한도에 도달했어요. 잠시 후 다시 시도해주세요.");
@@ -58,9 +58,9 @@ public class GroqPcTransport {
    if(response.statusCode()==401||response.statusCode()==403)throw new AiException(SERVICE_UNAVAILABLE,"Groq 연결 권한을 확인해주세요.");
    if(response.statusCode()!=200||response.body().length>131072)throw invalid();
    var choice=json.readTree(response.body()).path("choices").path(0);
-   if(!"stop".equals(choice.path("finish_reason").asText())||!choice.path("message").path("refusal").asText("").isBlank())throw invalid();
+   if(!"stop".equals(choice.path("finish_reason").asText())||!choice.path("message").path("refusal").asText("").isBlank()){log.warn("PC Groq response rejected: stopped={}, refusal={}","stop".equals(choice.path("finish_reason").asText()),!choice.path("message").path("refusal").asText("").isBlank());throw invalid();}
    var answer=json.readTree(choice.path("message").path("content").asText());if(answer==null||!answer.isObject())throw invalid();return answer;
-  }catch(AiException e){throw e;}catch(HttpTimeoutException e){throw new AiException(GATEWAY_TIMEOUT,"AI 분석이 지연되고 있어요. 잠시 후 다시 시도해주세요.");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiException(SERVICE_UNAVAILABLE,"AI 분석이 중단됐어요.");}catch(Exception e){throw invalid();}finally{if(locked)requestLock.unlock();}
+  }catch(AiException e){throw e;}catch(HttpTimeoutException e){throw new AiException(GATEWAY_TIMEOUT,"AI 분석이 지연되고 있어요. 잠시 후 다시 시도해주세요.");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiException(SERVICE_UNAVAILABLE,"AI 분석이 중단됐어요.");}catch(Exception e){log.warn("PC Groq transport/JSON failure: {}",e.getClass().getSimpleName());throw invalid();}finally{if(locked)requestLock.unlock();}
  }
  public static long resetDelayMillis(String value){long total=0;var matcher=java.util.regex.Pattern.compile("([0-9]+(?:\\.[0-9]+)?)(ms|s|m|h)").matcher(value);int end=0;while(matcher.find()){if(matcher.start()!=end)return 0;double factor=switch(matcher.group(2)){case "h"->3600000;case "m"->60000;case "s"->1000;default->1;};total+=(long)Math.ceil(Double.parseDouble(matcher.group(1))*factor);end=matcher.end();if(total>86400000)return 0;}return end==value.length()?total:0;}
  private static String quotaNumber(String message,String field){var match=java.util.regex.Pattern.compile("(?i)\\b"+field+"\\s*:?\\s*([0-9.]{1,12})").matcher(message);return match.find()?match.group(1):"unknown";}
