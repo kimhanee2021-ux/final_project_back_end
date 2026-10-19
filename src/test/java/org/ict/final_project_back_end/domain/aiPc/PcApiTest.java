@@ -42,16 +42,25 @@ class PcApiTest {
   mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content("{\"appId\":1,\"specs\":{}}")).andExpect(status().isBadRequest());verifyNoInteractions(gemini,requirements);
  }
  @Test void fiveOwnedGamesUseSameRealAssessmentPathWithoutInventingFps()throws Exception{
-  var answer=new ObjectMapper().readTree("{\"summary\":\"비교 근거 부족\",\"fhd\":\"실측 자료 없음\",\"qhd\":\"실측 자료 없음\",\"uhd\":\"실측 자료 없음\",\"settings\":[\"설정 확인\"],\"upgradeChecks\":[\"호환 확인\"],\"limitation\":\"평가 불가\"}");
+  var answer=new ObjectMapper().readTree("{\"grade\":\"X\",\"summary\":\"비교 근거 부족\",\"fhd\":\"실측 자료 없음\",\"qhd\":\"실측 자료 없음\",\"uhd\":\"실측 자료 없음\",\"settings\":[\"설정 확인\"],\"upgradeChecks\":[\"호환 확인\"],\"limitation\":\"평가 불가\",\"recommendations\":[]}");
   when(requirements.get(anyLong())).thenAnswer(i->new PcGameRequirements(i.getArgument(0),"게임 "+i.getArgument(0),"Memory: 8 GB Storage: 5 GB", "",true,"https://store.steampowered.com/app/"+i.getArgument(0)+"/","2026-10-19T00:00:00Z"));
-  when(gemini.explain(any(),any(),any())).thenReturn(answer);when(gemini.explanation(any(),anyString(),anyInt())).thenAnswer(i->answer.path((String)i.getArgument(1)).asText());when(gemini.list(any(),anyString())).thenReturn(java.util.List.of("확인 필요"));
+  when(gemini.explain(any(),any(),any(),anyList())).thenReturn(answer);when(gemini.explanation(any(),anyString(),anyInt())).thenAnswer(i->answer.path((String)i.getArgument(1)).asText());when(gemini.list(any(),anyString())).thenReturn(java.util.List.of("확인 필요"));
   for(int id=1;id<=5;id++)mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(id))).andExpect(status().isOk()).andExpect(jsonPath("$.appId").value(id)).andExpect(jsonPath("$.grade").value("X")).andExpect(jsonPath("$.resolutions[0].explanation").value("실측 자료 없음"));
-  verify(gemini,times(5)).explain(any(),any(),any());
+  verify(gemini,times(5)).explain(any(),any(),any(),anyList());
  }
  @Test void externalQuotaKeepsComparisonButMarksRateLimited()throws Exception{
   when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/","2026-10-19T00:00:00Z"));
-  when(gemini.explain(any(),any(),any())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,"private provider detail"));
+  when(gemini.explain(any(),any(),any(),anyList())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,"private provider detail"));
   mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isOk()).andExpect(jsonPath("$.explanationStatus").value("RATE_LIMITED")).andExpect(jsonPath("$.checks").isNotEmpty()).andExpect(jsonPath("$.summary").value(org.hamcrest.Matchers.containsString("이용 한도"))).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private provider detail"))));
+ }
+ @Test void aiRecommendationIsJoinedToObservedOfferAndSource()throws Exception{
+  var offer=new PcPart.Offer(new PcPart("GPU","조사한 후보",123,"https://example.invalid/manufacturer",java.util.List.of("전원 확인")),200000L,"OBSERVED","수집 가격","2026-10-19T00:00:00Z",null,null,null);
+  when(parts.offers(anyLong())).thenReturn(java.util.List.of(offer));
+  when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/","2026-10-19T00:00:00Z"));
+  var answer=new ObjectMapper().readTree("{\"grade\":\"X\",\"summary\":\"추가 확인 후 그래픽 후보 검토\",\"fhd\":\"실측 자료 없음\",\"qhd\":\"실측 자료 없음\",\"uhd\":\"실측 자료 없음\",\"limitation\":\"호환 확인 필요\",\"recommendations\":[{\"productCode\":\"123\",\"reason\":\"게임 그래픽 요구 조건과 비교할 후보\",\"compatibilityNote\":\"전원과 장착 공간 확인 필요\"}]}");
+  when(gemini.explain(any(),any(),any(),anyList())).thenReturn(answer);when(gemini.explanation(any(),anyString(),anyInt())).thenAnswer(i->answer.path((String)i.getArgument(1)).asText());
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isOk()).andExpect(jsonPath("$.explanationStatus").value("READY")).andExpect(jsonPath("$.recommendations[0].offer.priceKrw").value(200000)).andExpect(jsonPath("$.recommendations[0].offer.part.productCode").value(123)).andExpect(jsonPath("$.recommendations[0].reason").value("게임 그래픽 요구 조건과 비교할 후보"));
+  verify(gemini).explain(any(),any(),any(),eq(java.util.List.of(offer)));
  }
  @Test void officialOnlyComparisonNeverCallsGemini()throws Exception{
   when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/","2026-10-19T00:00:00Z"));
@@ -62,7 +71,7 @@ class PcApiTest {
  private String body(int id){return "{\"appId\":"+id+",\"specs\":{\"cpuModel\":\"CPU 123\",\"ramGB\":32,\"storageFreeGB\":100}}";}
  @Test void delayedAiKeepsOfficialComparisonAndClearlyMarksMissingExplanation()throws Exception{
   when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/?cc=kr","2026-10-19T00:00:00Z"));
-  when(gemini.explain(any(),any(),any())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.GATEWAY_TIMEOUT,"upstream detail must stay private"));
+  when(gemini.explain(any(),any(),any(),anyList())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.GATEWAY_TIMEOUT,"upstream detail must stay private"));
   mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isOk()).andExpect(jsonPath("$.gameName").value("공식 게임")).andExpect(jsonPath("$.grade").value("X")).andExpect(jsonPath("$.explanationStatus").value("UNAVAILABLE")).andExpect(jsonPath("$.requirements.source").value("https://store.steampowered.com/app/1/?cc=kr")).andExpect(jsonPath("$.summary").value(org.hamcrest.Matchers.containsString("AI 해설"))).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("upstream detail"))));
  }
  @Test void missingOfficialSourceStillFailsInsteadOfInventingComparison()throws Exception{
