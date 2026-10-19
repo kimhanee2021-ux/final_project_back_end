@@ -49,7 +49,13 @@ public class GeminiCoachClient implements CoachAiClient {
            {{discountHabit.discountedUnplayedPercent}}  {{refundableGames.0.refundDeadline}}
          금액(...Krw)·시간(...Hours)·분(...Minutes)·비율(...Percent)·날짜는 단위가 자동으로 붙으니 단위를 덧붙이지 마세요
          (예: "{{totals.totalSpentKrw}}를 썼어요"). 개수는 "{{totals.paidGames}}개"처럼 단위를 직접 붙이세요.
-         "작년", "올해"는 단어로 써도 되지만 연도 숫자는 쓰지 마세요. 차이·변화율은 comparisons의 값을 쓰고 직접 계산하지 마세요.
+         "작년", "올해"는 단어로 써도 되지만 연도·월 숫자는 직접 쓰지 마세요.
+         가장 많이 쓴 해·달, 가장 비싼 게임, 가장 오래 한 게임은 highlights에 미리 계산해 두었으니
+         {{highlights.mostSpentYear.year}}, {{highlights.mostSpentMonth.month}}, {{highlights.mostExpensiveGame.name}},
+         {{highlights.mostPlayedGame.name}}처럼 쓰세요. year에는 "년"이, month에는 "2025년 3월"처럼 연도까지 포함해 "년 월"이 자동으로 붙으니
+         뒤에 "년"·"월"을 다시 쓰거나 연도를 따로 덧붙이지 마세요. 사용자가 "2024년"처럼 연도를 말하면 {{spendingByYear.2024.year}}로 그 해를 부르세요
+         ("2년 전" 같은 상대 표현으로 바꾸지 마세요).
+         두 값의 차이는 comparisons의 changeKrw·changePercent·direction으로만 말하세요. 한쪽 값(예: 작년 지출)을 "차이"나 "더 쓴 금액"이라고 부르지 마세요. 차이·변화율은 comparisons의 값을 쓰고 직접 계산하지 마세요.
          필요한 값이 facts에 없으면 모른다고 말하고 "소비 패턴" 화면을 안내하세요. recommendations의 reason도 같은 규칙을 따릅니다.
       3. 게임을 추천하거나 "이 게임을 해 보세요"라고 권할 때는 그 게임을 반드시 recommendations에도 넣으세요 (appId는 facts.ownedGames의 값).
          facts.ownedGames에 있는 게임만, 최대 3개입니다. 추천을 요청받으면 안 해 본 게임(unplayedPaidGames)과

@@ -24,6 +24,9 @@ class CoachAnswerRendererTest {
     facts.put("discountHabit", Map.of("discountedUnplayedPercent", 33L));
     facts.put("refundableGames", List.of(Map.of("name", "Ori 2", "refundDeadline", "2026-10-24")));
     facts.put("ownedGames", Map.of("250900", Map.of("name", "Isaac", "playMinutes", 48)));
+    facts.put("highlights", Map.of(
+        "mostSpentYear", Map.of("year", 2024, "spentKrw", 139998),
+        "mostSpentMonth", Map.of("month", "2025-03", "spentKrw", 23000)));
   }
 
   @Test
@@ -60,6 +63,31 @@ class CoachAnswerRendererTest {
     // 로/으로: 받침 있으면 으로, ㄹ 받침(일)은 로 (실제 답변의 "129원로" 사례)
     assertEquals("101원으로, 2026년 10월 24일로",
         CoachAnswerRenderer.render("{{bestValueGames.0.hourlyCostKrw}}로, {{refundableGames.0.refundDeadline}}으로", facts, "").text());
+  }
+
+  @Test
+  void rendersPeakYearAndMonthWithUnits() {
+    CoachAnswerRenderer.Rendered r = CoachAnswerRenderer.render(
+        "{{highlights.mostSpentYear.year}}에 {{highlights.mostSpentYear.spentKrw}}으로 가장 많이 썼고, "
+            + "달로는 {{highlights.mostSpentMonth.month}}이에요.", facts, "가장 돈을 많이 쓴 년도는 언제야");
+    assertTrue(r.ok(), r.problems().toString());
+    assertEquals("2024년에 139,998원으로 가장 많이 썼고, 달로는 2025년 3월이에요.", r.text());
+    assertEquals(List.of(
+        new CoachChatResponse.Evidence("가장 많이 쓴 해 연도", "2024년"),
+        new CoachChatResponse.Evidence("가장 많이 쓴 해 지출", "139,998원"),
+        new CoachChatResponse.Evidence("가장 많이 쓴 달 월", "2025년 3월")), r.evidence());
+  }
+
+  @Test
+  void removesDoubledYearAndMonthUnitsWhenTheAiAddsThemAgain() {
+    // 실제 답변: "2024년년이에요" / "2025년 3월월"
+    assertEquals("2024년이에요",
+        CoachAnswerRenderer.render("{{highlights.mostSpentYear.year}}년이에요", facts, "").text());
+    assertEquals("2025년 3월이에요",
+        CoachAnswerRenderer.render("{{highlights.mostSpentMonth.month}}월이에요", facts, "").text());
+    // 실제 답변: 연도를 앞에 따로 쓰고 (연도가 포함된) 월 값을 또 붙임 -> 한 번만
+    assertEquals("가장 많이 쓴 달은 2025년 3월이에요",
+        CoachAnswerRenderer.render("가장 많이 쓴 달은 2025년 {{highlights.mostSpentMonth.month}}이에요", facts, "2025년").text());
   }
 
   @Test

@@ -52,6 +52,7 @@ public final class CoachFactsBuilder {
       facts.put("comparisons", comparisons(years, months, today.getYear()));
     }
     facts.put("thisMonth", thisMonth(spending, budget, today));
+    facts.put("highlights", highlights(spending, paid, games, today));
     facts.put("spendingByGenre", byGenre(paid));
     if (history) {
       facts.put("discountHabit", discountHabit(paid));
@@ -111,7 +112,7 @@ public final class CoachFactsBuilder {
       }
     }
     Map<String, Map<String, Object>> result = new LinkedHashMap<>();
-    years.forEach((year, sums) -> result.put(String.valueOf(year), row("relative", relativeYear(year, thisYear),
+    years.forEach((year, sums) -> result.put(String.valueOf(year), row("year", year, "relative", relativeYear(year, thisYear),
         "spentKrw", Math.max(0, sums[0]), "purchases", sums[1])));
     return result;
   }
@@ -127,6 +128,30 @@ public final class CoachFactsBuilder {
     }
     Map<String, Map<String, Object>> result = new LinkedHashMap<>();
     months.forEach((month, spent) -> result.put(month, row("spentKrw", Math.max(0, spent))));
+    return result;
+  }
+
+  // "가장 많이 쓴 해/달", "가장 비싼 게임" 같은 최댓값. 연도·달은 spendingByYear의 키라 AI가 {{...}}로 가리킬 수 없어서
+  // 값(year, month)으로 미리 꺼내 둔다 (예: {{highlights.mostSpentYear.year}} -> "2025년")
+  private static Map<String, Object> highlights(SpendingAnalysisResponse spending, List<SpendingGameResponse> paid,
+                                                List<SpendingGameResponse> games, LocalDate today) {
+    Map<String, Object> result = new LinkedHashMap<>();
+    if (spending.hasPurchaseHistory() && !spending.transactions().isEmpty()) {
+      byYear(spending.transactions(), today.getYear()).entrySet().stream()
+          .max(Comparator.comparingInt(e -> (int) e.getValue().get("spentKrw")))
+          .ifPresent(e -> result.put("mostSpentYear", row("year", Integer.valueOf(e.getKey()),
+              "spentKrw", e.getValue().get("spentKrw"), "purchases", e.getValue().get("purchases"))));
+      Map<String, Integer> months = new TreeMap<>();
+      for (SpendingAnalysisResponse.PurchaseView t : spending.transactions()) {
+        months.merge(t.purchasedAt().toString().substring(0, 7), t.amountKrw(), Integer::sum);
+      }
+      months.entrySet().stream().max(Map.Entry.comparingByValue())
+          .ifPresent(e -> result.put("mostSpentMonth", row("month", e.getKey(), "spentKrw", Math.max(0, e.getValue()))));
+    }
+    paid.stream().max(Comparator.comparingInt(CoachFactsBuilder::net))
+        .ifPresent(g -> result.put("mostExpensiveGame", row("appId", g.appId(), "name", g.name(), "amountKrw", net(g))));
+    games.stream().filter(g -> g.hours() > 0).max(Comparator.comparingDouble(SpendingGameResponse::hours))
+        .ifPresent(g -> result.put("mostPlayedGame", row("appId", g.appId(), "name", g.name(), "playHours", round1(g.hours()))));
     return result;
   }
 

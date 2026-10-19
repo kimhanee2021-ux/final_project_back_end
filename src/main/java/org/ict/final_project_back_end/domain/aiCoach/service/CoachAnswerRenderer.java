@@ -27,7 +27,8 @@ public final class CoachAnswerRenderer {
   private static final Pattern RAW_NUMBER = Pattern.compile("(\\d[\\d,]*(?:\\.\\d+)?)\\s*(원|시간|분|%|퍼센트|년)");
   // 서비스 규칙을 설명할 때 쓰는 고정 표현 ("1시간 이상 플레이", "2시간 미만이면 환불")은 데이터 숫자가 아니라 허용
   private static final Set<String> RULE_PHRASES = Set.of("1시간", "2시간");
-  private static final Pattern DATE = Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
+  private static final Pattern YEAR_MONTH = Pattern.compile("(\\d{4})-(\\d{2})");
+  private static final Pattern DATE =Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
 
   // 근거 보기에 보여줄 칸 이름
   private static final Map<String, String> FIELD_LABELS = Map.ofEntries(
@@ -47,10 +48,13 @@ public final class CoachAnswerRenderer {
       Map.entry("thisYearSpentKrw", "올해 지출(진행 중)"), Map.entry("lastYearSpentKrw", "작년 지출"),
       Map.entry("changeKrw", "지출 차이"), Map.entry("changePercent", "지출 변화율"),
       Map.entry("averagePerMonthKrw", "월평균 지출"), Map.entry("dlcCount", "DLC 수"), Map.entry("name", "이름"),
-      Map.entry("thisYear", "올해"), Map.entry("lastYear", "작년"), Map.entry("direction", "변화"));
+      Map.entry("thisYear", "올해"), Map.entry("lastYear", "작년"), Map.entry("direction", "변화"),
+      Map.entry("year", "연도"), Map.entry("month", "월"));
 
   private static final Map<String, String> SECTION_LABELS = Map.ofEntries(
-      Map.entry("totals", ""), Map.entry("thisMonth", "이번 달"), Map.entry("discountHabit", ""),
+      Map.entry("totals", ""), Map.entry("thisMonth", "이번 달"), Map.entry("highlights", ""),
+      Map.entry("mostSpentYear", "가장 많이 쓴 해"), Map.entry("mostSpentMonth", "가장 많이 쓴 달"),
+      Map.entry("mostExpensiveGame", ""), Map.entry("mostPlayedGame", ""), Map.entry("discountHabit", ""),
       Map.entry("comparisons", ""), Map.entry("thisYearVsLastYear", "작년 대비 올해"), Map.entry("last12Months", "최근 12개월"),
       Map.entry("spendingByGenre", ""), Map.entry("unplayedPaidGames", ""), Map.entry("bestValueGames", ""),
       Map.entry("worstValueGames", ""), Map.entry("refundableGames", ""), Map.entry("playingRecently", ""),
@@ -77,7 +81,7 @@ public final class CoachAnswerRenderer {
       } else {
         String shown = format(resolved.field(), resolved.value());
         out.append(shown);
-        if (!"name".equals(resolved.field()) && !"genre".equals(resolved.field())) {
+        if (!"name".equals(resolved.field()) && !"genre".equals(resolved.field()) && !"relative".equals(resolved.field())) {
           evidence.putIfAbsent(path, new CoachChatResponse.Evidence(describe(facts, path), shown));
         }
         // AI는 값의 받침을 모르니 바로 뒤 조사를 실제 값에 맞춘다 ("11,117원를" -> "11,117원을", "101원예요" -> "101원이에요")
@@ -99,7 +103,9 @@ public final class CoachAnswerRenderer {
       }
     }
     // "{{x}}원"처럼 단위를 한 번 더 붙인 경우 정리
-    String text = out.toString().replace("원원", "원").replace("시간시간", "시간").replace("분분", "분")
+    String text = out.toString().replace("원원", "원").replace("년년", "년").replace("월월", "월")
+        // AI가 연도를 앞에 따로 쓰고 월 값(연도 포함)을 또 붙인 경우: "2024년 2024년 9월" -> "2024년 9월"
+        .replaceAll("(\\d{4})년 \\1년 (\\d{1,2}월)", "$1년 $2").replace("시간시간", "시간").replace("분분", "분")
         .replace("%%", "%").replace("%퍼센트", "%");
     return new Rendered(text, List.copyOf(evidence.values()), List.copyOf(problems));
   }
@@ -175,7 +181,7 @@ public final class CoachAnswerRenderer {
       if (field.endsWith("Percent") || field.equals("percent") || field.endsWith("PercentGap")) {
         return new DecimalFormat("#,##0").format(Math.round(v)) + "%";
       }
-      if (field.equals("thisYear") || field.equals("lastYear")) {
+      if (field.equals("thisYear") || field.equals("lastYear") || field.equals("year")) {
         return Math.round(v) + "년";
       }
       return new DecimalFormat("#,##0.#").format(v);
@@ -184,6 +190,10 @@ public final class CoachAnswerRenderer {
     Matcher date = DATE.matcher(text);
     if (date.matches()) {
       return Integer.parseInt(date.group(1)) + "년 " + Integer.parseInt(date.group(2)) + "월 " + Integer.parseInt(date.group(3)) + "일";
+    }
+    Matcher yearMonth = YEAR_MONTH.matcher(text);
+    if (yearMonth.matches()) {
+      return Integer.parseInt(yearMonth.group(1)) + "년 " + Integer.parseInt(yearMonth.group(2)) + "월";
     }
     return text;
   }

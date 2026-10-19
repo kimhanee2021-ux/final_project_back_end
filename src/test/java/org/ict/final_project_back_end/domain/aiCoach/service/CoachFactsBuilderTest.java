@@ -117,6 +117,36 @@ class CoachFactsBuilderTest {
   }
 
   @Test
+  void highlightsGivePeakYearMonthAndGamesAsValuesSoTheAiNeverHasToPickAKey() {
+    List<PurchaseView> transactions = List.of(
+        new PurchaseView(LocalDate.of(2026, 10, 10), "PURCHASE", 5000, 2L, List.of("Ori 2"), 4000),
+        new PurchaseView(LocalDate.of(2025, 3, 1), "PURCHASE", 20000, 1L, List.of("Dead Cells"), 10000),
+        new PurchaseView(LocalDate.of(2025, 3, 20), "PURCHASE", 3000, 3L, List.of("Witcher 3"), 0));
+    Map<String, Object> facts = CoachFactsBuilder.build(history(games, transactions), null, TODAY);
+    Map<String, Object> highlights = get(facts, "highlights");
+    Map<String, Object> year = get(highlights, "mostSpentYear");
+    // 연도는 spendingByYear의 키라 가리킬 수 없으므로 값(year)으로 따로 준다 ("가장 많이 쓴 년도" 질문이 502였던 원인)
+    assertEquals(2025, year.get("year"));
+    assertEquals(23000, year.get("spentKrw"));
+    Map<String, Object> month = get(highlights, "mostSpentMonth");
+    assertEquals("2025-03", month.get("month"));
+    assertEquals(23000, month.get("spentKrw"));
+    Map<String, Object> expensive = get(highlights, "mostExpensiveGame");
+    assertEquals("Dead Cells", expensive.get("name"));
+    Map<String, Object> played = get(highlights, "mostPlayedGame");
+    assertEquals("Dead Cells", played.get("name"));
+  }
+
+  @Test
+  void highlightsHaveNoYearOrMonthWithoutPurchaseHistory() {
+    SpendingAnalysisResponse estimated = new SpendingAnalysisResponse(TODAY, "KRW_LIST_PRICE", games, false, 0, 0, 0, 0, List.of());
+    Map<String, Object> highlights = get(CoachFactsBuilder.build(estimated, null, TODAY), "highlights");
+    assertFalse(highlights.containsKey("mostSpentYear"));
+    assertFalse(highlights.containsKey("mostSpentMonth"));
+    assertTrue(highlights.containsKey("mostExpensiveGame"));
+  }
+
+  @Test
   void estimatedDataHasNoMonthlySpendingOrRefunds() {
     SpendingAnalysisResponse estimated = new SpendingAnalysisResponse(TODAY, "KRW_LIST_PRICE", games, false, 0, 0, 0, 0, List.of());
     Map<String, Object> facts = CoachFactsBuilder.build(estimated, new BudgetResponse("2026-10", 30000), TODAY);
