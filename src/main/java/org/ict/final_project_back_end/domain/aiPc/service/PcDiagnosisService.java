@@ -32,12 +32,13 @@ public class PcDiagnosisService {
    if(games.stream().anyMatch(g->!g.windows()))throw new AiException(BAD_REQUEST,"Windows 지원이 확인되지 않은 게임이 있어요.");
    var comparisons=games.stream().map(g->PcRules.compare(pc,g.minimum())).toList();
    var offers=parts.offers(id);var answer=gemini.explainBatch(pc,games,comparisons,offers);
+   var advice=PcComponentAdviceReader.parse(answer.path("componentAdvice"),offers);
    var answers=answer.path("results");if(!answers.isArray()||answers.size()!=games.size())throw new AiException(BAD_GATEWAY,"게임별 AI 응답을 확인하지 못했어요.");
    var results=new ArrayList<PcDiagnosis.Assessment>();
    for(int i=0;i<games.size();i++){
     var g=games.get(i);var comparison=comparisons.get(i);var entry=answers.get(i);if(!entry.path("appId").canConvertToLong()||entry.path("appId").asLong()!=g.appId())throw new AiException(BAD_GATEWAY,"게임별 AI 응답이 일치하지 않아요.");var data=entry.path("analysis");
     var grade=PcAiAssessment.grade(data,comparison);var recommendations=PcAiRecommendations.parse(data,offers);
-    results.add(new PcDiagnosis.Assessment(g.appId(),g.name(),grade,comparison.checks(),gemini.explanation(data,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(data,"fhd",600),PcFpsEvidence.find(pc,g.appId(),"FHD")),new PcDiagnosis.Resolution("QHD",gemini.explanation(data,"qhd",600),PcFpsEvidence.find(pc,g.appId(),"QHD")),new PcDiagnosis.Resolution("4K",gemini.explanation(data,"uhd",600),PcFpsEvidence.find(pc,g.appId(),"4K"))),gemini.list(data,"settings"),gemini.list(data,"upgradeChecks"),gemini.explanation(data,"limitation",800),g,"READY",recommendations));
+    results.add(new PcDiagnosis.Assessment(g.appId(),g.name(),grade,comparison.checks(),gemini.explanation(data,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(data,"fhd",600),PcFpsEvidence.find(pc,g.appId(),"FHD"),PcPerformanceTargets.parse(data,"fhd",pc)),new PcDiagnosis.Resolution("QHD",gemini.explanation(data,"qhd",600),PcFpsEvidence.find(pc,g.appId(),"QHD"),PcPerformanceTargets.parse(data,"qhd",pc)),new PcDiagnosis.Resolution("4K",gemini.explanation(data,"uhd",600),PcFpsEvidence.find(pc,g.appId(),"4K"),PcPerformanceTargets.parse(data,"uhd",pc))),gemini.list(data,"settings"),gemini.list(data,"upgradeChecks"),gemini.explanation(data,"limitation",800),g,"READY",recommendations,advice,gemini.actualProvider()));
    }return List.copyOf(results);
   }finally{limit.end(id);}
  }
@@ -57,7 +58,7 @@ public class PcDiagnosisService {
    String stage="PART_OFFERS";
    try{
     var offers=parts.offers(id);if(offers==null)offers=List.of();stage="AI_EXPLANATION";var answer=gemini.explain(pc,source,comparison,offers);stage="RECOMMENDATION_VALIDATION";var recommendations=PcAiRecommendations.parse(answer,offers);stage="GRADE_VALIDATION";var aiGrade=PcAiAssessment.grade(answer,comparison);stage="TEXT_VALIDATION";
-    return new PcDiagnosis.Assessment(source.appId(),source.name(),aiGrade,comparison.checks(),gemini.explanation(answer,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(answer,"fhd",600),PcFpsEvidence.find(pc,source.appId(),"FHD")),new PcDiagnosis.Resolution("QHD",gemini.explanation(answer,"qhd",600),PcFpsEvidence.find(pc,source.appId(),"QHD")),new PcDiagnosis.Resolution("4K",gemini.explanation(answer,"uhd",600),PcFpsEvidence.find(pc,source.appId(),"4K"))),gemini.list(answer,"settings"),gemini.list(answer,"upgradeChecks"),gemini.explanation(answer,"limitation",800),source,"READY",recommendations);
+    return new PcDiagnosis.Assessment(source.appId(),source.name(),aiGrade,comparison.checks(),gemini.explanation(answer,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(answer,"fhd",600),PcFpsEvidence.find(pc,source.appId(),"FHD"),PcPerformanceTargets.parse(answer,"fhd",pc)),new PcDiagnosis.Resolution("QHD",gemini.explanation(answer,"qhd",600),PcFpsEvidence.find(pc,source.appId(),"QHD"),PcPerformanceTargets.parse(answer,"qhd",pc)),new PcDiagnosis.Resolution("4K",gemini.explanation(answer,"uhd",600),PcFpsEvidence.find(pc,source.appId(),"4K"),PcPerformanceTargets.parse(answer,"uhd",pc))),gemini.list(answer,"settings"),gemini.list(answer,"upgradeChecks"),gemini.explanation(answer,"limitation",800),source,"READY",recommendations,PcComponentAdviceReader.parse(answer.path("componentAdvice"),offers),gemini.actualProvider());
    }catch(AiException failure){
     org.slf4j.LoggerFactory.getLogger(PcDiagnosisService.class).warn("PC assessment failure: stage={}, status={}",stage,failure.getStatus().value());
     if(!Set.of(BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT,TOO_MANY_REQUESTS).contains(failure.getStatus()))throw failure;

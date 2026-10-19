@@ -38,7 +38,7 @@ public class GroqPcTransport {
    String concise="\n무료 분석 예산을 위해 JSON 내용은 간결하게 작성하세요. summary100자, fhd/qhd/uhd각35자, settings최대2개 각25자, upgradeChecks최대2개 각40자, limitation40자, recommendations최대1개 reason40자/compatibilityNote60자. 사진 판독의 숫자/단위와 미확인 값 처리는 그대로 지키세요. CPU/GPU의 직접 비교 근거가 없으면 충족으로 단정하지 말고 확인 필요라고 쓰세요. CPU/RAM을 묶어 충족이라고 표현하지 마세요.";
    var body=new LinkedHashMap<String,Object>();body.put("model",model);body.put("messages",List.of(Map.of("role","system","content",instructions+concise),Map.of("role","user","content",content)));
    body.put("response_format",Map.of("type","json_schema","json_schema",Map.of("name","pc_diagnosis","strict",true,"schema",schema)));
-   boolean hasImage=parts.stream().anyMatch(p->p.containsKey("inlineData"));int outputLimit=hasImage?768:Math.max(900,Math.min(2400,requestedOutputLimit));
+   boolean hasImage=parts.stream().anyMatch(p->p.containsKey("inlineData"));int outputLimit=hasImage?768:Math.max(900,Math.min(3600,requestedOutputLimit));
    body.put("max_completion_tokens",outputLimit);body.put("temperature",0.2);
    if(model.startsWith("qwen/"))body.put("reasoning_effort","none");
    // 잔여토큰과 문자수 기반의 부정확한 추정치로 정상 요청을 차단하지 않는다.
@@ -50,8 +50,9 @@ public class GroqPcTransport {
    long reset=resetDelayMillis(response.headers().firstValue("x-ratelimit-reset-tokens").orElse(""));tokenResetAt=System.currentTimeMillis()+(tokensRemaining==Long.MAX_VALUE?0:Math.max(reset,60000));
    if(response.statusCode()!=200){String code="unknown";if(response.body().length<=131072){try{String rawCode=json.readTree(response.body()).path("error").path("code").asText("unknown");if(rawCode.matches("[a-zA-Z0-9_-]{1,64}"))code=rawCode;}catch(Exception ignored){}}log.warn("PC Groq request failed: HTTP {}, code={}",response.statusCode(),code);}
    if(response.statusCode()==429){
-    if(response.body().length<=131072){try{String message=json.readTree(response.body()).path("error").path("message").asText();String lower=message.toLowerCase(Locale.ROOT);log.warn("PC Groq quota numbers: limit={}, used={}, requested={}, tokenMinute={}, tokenDay={}, requestMinute={}, requestDay={}",quotaNumber(message,"Limit"),quotaNumber(message,"Used"),quotaNumber(message,"Requested"),lower.contains("tpm")||lower.contains("tokens per minute"),lower.contains("tpd")||lower.contains("tokens per day"),lower.contains("rpm")||lower.contains("requests per minute"),lower.contains("rpd")||lower.contains("requests per day"));}catch(Exception ignored){/* 공급자 본문은 로그로 남기지 않는다. */}}
-    throw new AiException(TOO_MANY_REQUESTS,"Groq 이용 한도에 도달했어요. 잠시 후 다시 시도해주세요.");
+    String quotaNotice="Groq 이용 제한으로 분석을 중단했어요. 사진을 다시 올릴 필요는 없어요.";
+    if(response.body().length<=131072){try{String message=json.readTree(response.body()).path("error").path("message").asText();String lower=message.toLowerCase(Locale.ROOT);quotaNotice=GroqPcQuota.describe(message);log.warn("PC Groq quota numbers: limit={}, used={}, requested={}, tokenMinute={}, tokenDay={}, requestMinute={}, requestDay={}",quotaNumber(message,"Limit"),quotaNumber(message,"Used"),quotaNumber(message,"Requested"),lower.contains("tpm")||lower.contains("tokens per minute"),lower.contains("tpd")||lower.contains("tokens per day"),lower.contains("rpm")||lower.contains("requests per minute"),lower.contains("rpd")||lower.contains("requests per day"));}catch(Exception ignored){/* 공급자 본문은 로그로 남기지 않는다. */}}
+    throw new AiException(TOO_MANY_REQUESTS,quotaNotice);
    }
    if(response.statusCode()==401||response.statusCode()==403)throw new AiException(SERVICE_UNAVAILABLE,"Groq 연결 권한을 확인해주세요.");
    if(response.statusCode()!=200||response.body().length>131072)throw invalid();

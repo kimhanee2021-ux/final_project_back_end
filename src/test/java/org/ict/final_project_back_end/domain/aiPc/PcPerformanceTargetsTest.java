@@ -1,0 +1,13 @@
+package org.ict.final_project_back_end.domain.aiPc;
+import org.junit.jupiter.api.Test;import static org.junit.jupiter.api.Assertions.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.ict.final_project_back_end.domain.aiPc.dto.PcSpecs;
+import org.ict.final_project_back_end.domain.aiPc.service.PcPerformanceTargets;
+class PcPerformanceTargetsTest {
+ private PcSpecs pc(String gpu){return new PcSpecs("i7-13700","",gpu,"",32.0,"",1000.0,500.0,"");}
+ private com.fasterxml.jackson.databind.JsonNode answer(String grade,String code,String reason)throws Exception{return new ObjectMapper().readTree("{\"targets\":{\"fhd\":{\"grade\":\""+grade+"\",\"reasonCode\":\""+code+"\",\"reason\":\""+reason+"\"}}}");}
+ @Test void returnsConditionalBandWithLowConfidence()throws Exception{var r=PcPerformanceTargets.parse(answer("B","ESTIMATE","낮음 옵션에서 조건부 추정"),"fhd",pc("UHD770"));assertEquals("B",r.grade());assertEquals("LOW",r.confidence());assertEquals("낮음 옵션",r.preset());}
+ @Test void missingGpuOverridesAiGrade()throws Exception{assertEquals("UNKNOWN_GPU",PcPerformanceTargets.parse(answer("A","ESTIMATE","추정"),"fhd",pc("")).reasonCode());}
+ @Test void unknownKeepsSpecificReason()throws Exception{var r=PcPerformanceTargets.parse(answer("UNKNOWN","RESOLUTION_GAP","해상도 비교자료 부족"),"fhd",pc("UHD770"));assertEquals("추정 어려움",r.label());assertEquals("RESOLUTION_GAP",r.reasonCode());}
+ @Test void missingResolutionAndInventedNumericFpsDoNotBecomeGrades()throws Exception{assertEquals("UNKNOWN",PcPerformanceTargets.parse(answer("A","ESTIMATE","144FPS 보장"),"fhd",pc("UHD770")).grade());assertEquals("UNKNOWN",PcPerformanceTargets.parse(answer("A","ESTIMATE","추정"),"uhd",pc("UHD770")).grade());}
+}

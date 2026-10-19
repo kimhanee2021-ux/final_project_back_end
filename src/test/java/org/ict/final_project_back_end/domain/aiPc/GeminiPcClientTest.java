@@ -24,4 +24,22 @@ class GeminiPcClientTest {
   var request=new ObjectMapper().readTree(received);String input=request.path("contents").get(0).path("parts").get(0).path("text").asText();
   assertEquals(5,new ObjectMapper().readTree(input).path("games").size());assertTrue(received.contains("results"));
  }
+ @Test void geminiQuotaFallsBackToGroqOnceAndReportsActualProvider()throws Exception{
+  var groq=org.mockito.Mockito.mock(org.ict.final_project_back_end.domain.aiPc.service.GroqPcTransport.class);
+  org.mockito.Mockito.when(groq.configured()).thenReturn(true);
+  var extractionReply=new ObjectMapper().readTree(new ObjectMapper().readTree(answer("32")).path("candidates").get(0).path("content").path("parts").get(0).path("text").asText());
+  org.mockito.Mockito.when(groq.ask(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap())).thenReturn(extractionReply);
+  var routed=new GeminiPcClient("test-only","test-model","http://127.0.0.1:"+server.getAddress().getPort(),groq,"auto");status=429;reply="{}";
+  assertEquals("Gemini → Groq",routed.provider());assertEquals("Groq",routed.extract(new byte[]{1},"image/png").aiProvider());
+  org.mockito.Mockito.verify(groq,org.mockito.Mockito.times(1)).ask(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap());
+ }
+ @Test void geminiSuccessDoesNotTransmitPhotoToGroq()throws Exception{
+  var groq=org.mockito.Mockito.mock(org.ict.final_project_back_end.domain.aiPc.service.GroqPcTransport.class);org.mockito.Mockito.when(groq.configured()).thenReturn(true);
+  var routed=new GeminiPcClient("test-only","test-model","http://127.0.0.1:"+server.getAddress().getPort(),groq,"auto");reply=answer("32");assertEquals("Gemini",routed.extract(new byte[]{1},"image/png").aiProvider());org.mockito.Mockito.verify(groq,org.mockito.Mockito.never()).ask(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap());
+ }
+ @Test void malformedGeminiResponseDoesNotTriggerFallback(){
+  var groq=org.mockito.Mockito.mock(org.ict.final_project_back_end.domain.aiPc.service.GroqPcTransport.class);org.mockito.Mockito.when(groq.configured()).thenReturn(true);
+  var routed=new GeminiPcClient("test-only","test-model","http://127.0.0.1:"+server.getAddress().getPort(),groq,"auto");reply="{}";
+  assertThrows(AiException.class,()->routed.extract(new byte[]{1},"image/png"));org.mockito.Mockito.verify(groq,org.mockito.Mockito.never()).ask(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyList(),org.mockito.ArgumentMatchers.anyMap());
+ }
 }
