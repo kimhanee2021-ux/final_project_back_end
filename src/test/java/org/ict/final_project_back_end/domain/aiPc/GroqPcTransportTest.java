@@ -11,8 +11,8 @@ import org.ict.final_project_back_end.domain.aiPc.service.*;
 import org.ict.final_project_back_end.domain.aiCommon.exception.AiException;
 import static org.springframework.http.HttpStatus.*;
 class GroqPcTransportTest {
- HttpServer server;GroqPcTransport transport;String reply,received;int status;
- @BeforeEach void setup()throws Exception{server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);server.createContext("/openai/v1/chat/completions",x->{received=new String(x.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);var bytes=reply.getBytes(StandardCharsets.UTF_8);x.sendResponseHeaders(status,bytes.length);x.getResponseBody().write(bytes);x.close();});server.start();transport=new GroqPcTransport("test-only","qwen/test","http://127.0.0.1:"+server.getAddress().getPort());status=200;reply="{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"{\\\"ok\\\":true}\"}}]}";}
+ HttpServer server;GroqPcTransport transport;String reply,received;int status;boolean lowTokenHeader;
+ @BeforeEach void setup()throws Exception{server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);server.createContext("/openai/v1/chat/completions",x->{received=new String(x.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);var bytes=reply.getBytes(StandardCharsets.UTF_8);if(lowTokenHeader){x.getResponseHeaders().add("x-ratelimit-remaining-tokens","0");x.getResponseHeaders().add("x-ratelimit-reset-tokens","60s");}x.sendResponseHeaders(status,bytes.length);x.getResponseBody().write(bytes);x.close();});server.start();transport=new GroqPcTransport("test-only","qwen/test","http://127.0.0.1:"+server.getAddress().getPort());status=200;reply="{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"{\\\"ok\\\":true}\"}}]}";}
  @AfterEach void stop(){server.stop(0);}
  private com.fasterxml.jackson.databind.JsonNode ask(){return transport.ask("한국어 JSON",List.of(Map.of("inlineData",Map.of("mimeType","image/png","data","AQ=="))),Map.of("type","object"));}
  @Test void translatesImageAndStructuredSchemaWithoutLeakingKeyIntoBody()throws Exception{assertTrue(ask().path("ok").asBoolean());var body=new ObjectMapper().readTree(received);assertEquals("data:image/png;base64,AQ==",body.path("messages").get(1).path("content").get(0).path("image_url").path("url").asText());assertTrue(body.path("response_format").path("json_schema").path("strict").asBoolean());assertFalse(received.contains("test-only"));assertEquals("none",body.path("reasoning_effort").asText());}
@@ -24,4 +24,5 @@ class GroqPcTransportTest {
   var connection=new GroqPcTransport("test-only","qwen/test","http://127.0.0.1:"+server.getAddress().getPort(),60);
   assertTimeoutPreemptively(java.time.Duration.ofSeconds(3),()->{for(int i=0;i<2;i++)assertTrue(connection.ask("JSON",List.of(Map.of("text","data")),Map.of("type","object")).path("ok").asBoolean());});
  }
+ @Test void staleTokenHeaderDoesNotInventRateLimitOrDelay(){lowTokenHeader=true;assertTimeoutPreemptively(java.time.Duration.ofSeconds(3),()->{assertTrue(ask().path("ok").asBoolean());assertTrue(ask().path("ok").asBoolean());});}
 }

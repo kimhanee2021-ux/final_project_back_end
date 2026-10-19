@@ -41,11 +41,8 @@ public class GroqPcTransport {
    boolean hasImage=parts.stream().anyMatch(p->p.containsKey("inlineData"));int outputLimit=hasImage?768:Math.max(900,Math.min(2400,requestedOutputLimit));
    body.put("max_completion_tokens",outputLimit);body.put("temperature",0.2);
    if(model.startsWith("qwen/"))body.put("reasoning_effort","none");
-   long estimate=outputLimit+(hasImage?2048:0)+instructions.length()+json.writeValueAsString(schema).length()/3;
-   for(var part:parts)if(part.get("text") instanceof String text)estimate+=text.length()/2;
-   long now=System.currentTimeMillis();long wait=Math.max(nextRequestAt-now,tokensRemaining<estimate?tokenResetAt-now:0);
-   // 공급자 응답 헤더를 기준으로 같은 PC 공급자의 연속 요청을 간격 조절한다. 429 자동 재시도는 하지 않는다.
-   if(wait>0)throw new AiException(TOO_MANY_REQUESTS,"Groq 이용 한도 회복 후 다시 분석해주세요.");
+   // 잔여토큰과 문자수 기반의 부정확한 추정치로 정상 요청을 차단하지 않는다.
+   // 실제 공급자 429는 아래에서 그대로 전달하며 자동 재시도하지 않는다.
    var request=HttpRequest.newBuilder(URI.create(base+"/openai/v1/chat/completions")).timeout(Duration.ofSeconds(90)).header("Content-Type","application/json").header("Authorization","Bearer "+key).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
    var response=http.send(request,HttpResponse.BodyHandlers.ofByteArray());
    nextRequestAt=0; // 고정 간격 대신 공급자가 반환한 실제 잔여 토큰만 확인한다.
