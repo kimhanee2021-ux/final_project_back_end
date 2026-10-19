@@ -41,7 +41,7 @@ class PcApiTest {
   when(gemini.provider()).thenReturn("Groq");
   mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/png")).param("provider","Gemini").header("Authorization",token)).andExpect(status().isConflict());
   verify(gemini,never()).extract(any(),anyString());
-  mvc.perform(get("/api/ai/pc/provider").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("Groq"));
+  mvc.perform(get("/api/ai/pc/provider").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("Groq")).andExpect(jsonPath("$.contractVersion").value("pc-fps-retail-v1"));
   mvc.perform(get("/api/ai/pc/provider")).andExpect(status().isUnauthorized());
  }
  @Test void impossibleCapacityAndMissingSpecsAreRejected()throws Exception{

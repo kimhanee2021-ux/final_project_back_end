@@ -2,4 +2,7 @@ package org.ict.final_project_back_end.domain.aiPc.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.ict.final_project_back_end.domain.aiPc.entity.PcPartPriceSnapshot;
 import java.util.List;
-public interface PcPartPriceRepository extends JpaRepository<PcPartPriceSnapshot,Long> {List<PcPartPriceSnapshot> findTop2ByProductCodeOrderByIdDesc(long code);}
+public interface PcPartPriceRepository extends JpaRepository<PcPartPriceSnapshot,Long> {
+ List<PcPartPriceSnapshot> findTop2ByProductCodeOrderByIdDesc(long code);
+ List<PcPartPriceSnapshot> findTop2ByProductCodeAndSourceKeyOrderByIdDesc(long code,String sourceKey);
+}

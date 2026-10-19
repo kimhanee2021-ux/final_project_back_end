@@ -5,7 +5,7 @@ public final class PcDiagnosis {
  private PcDiagnosis(){}
  public record Extraction(PcSpecs specs,List<String> warnings){}
  public record Request(@NotNull @Valid PcSpecs specs,@Min(1) @Max(999999999) long appId,Boolean includeAi){}
- public record Resolution(String name,String explanation){}
+ public record Resolution(String name,String explanation,PcFps.Evidence fps){public Resolution(String name,String explanation){this(name,explanation,null);}}
  public record UpgradeRecommendation(PcPart.Offer offer,String reason,String compatibilityNote){}
  public record Assessment(long appId,String gameName,String grade,List<String> checks,String summary,List<Resolution> resolutions,List<String> settings,List<String> upgradeChecks,String limitation,PcGameRequirements requirements,String explanationStatus,List<UpgradeRecommendation> recommendations){}
 }

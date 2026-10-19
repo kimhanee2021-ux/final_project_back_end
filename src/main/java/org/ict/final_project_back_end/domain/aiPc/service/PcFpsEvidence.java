@@ -1,0 +1,36 @@
+package org.ict.final_project_back_end.domain.aiPc.service;
+import org.ict.final_project_back_end.domain.aiPc.dto.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+
+/** 단순 해상도 배율·GPU 점수 비례로 FPS를 만들지 않는다. 출처 있는 참고 실측과 조건부 저신뢰 참고 전이를 구분한다. */
+public final class PcFpsEvidence {
+ private PcFpsEvidence(){}
+ private static final List<PcFps.Sample> SAMPLES=load();
+ private static List<PcFps.Sample> load(){
+  try(var stream=PcFpsEvidence.class.getResourceAsStream("/pc-benchmarks/verified-reference.json")){
+   if(stream==null)throw new IllegalStateException("Missing benchmark evidence");
+   return List.of(new ObjectMapper().readValue(stream,PcFps.Sample[].class));
+  }catch(Exception failure){throw new IllegalStateException("Invalid benchmark evidence resource",failure);}
+ }
+ public static PcFps.Evidence find(PcSpecs pc,long appId,String resolution){return select(pc,appId,resolution,SAMPLES);}
+ public static List<PcFps.Sample> references(PcSpecs pc,long appId){return SAMPLES.stream().filter(s->s.appId()==appId&&key(s.gpu()).equals(key(pc.gpuModel()))).toList();}
+ public static Map<String,PcFps.Projection> projections(PcSpecs pc,long appId){var result=new LinkedHashMap<String,PcFps.Projection>();for(String resolution:List.of("FHD","QHD","4K")){var evidence=find(pc,appId,resolution);if(evidence.projection()!=null)result.put(resolution,evidence.projection());}return Map.copyOf(result);}
+ public static PcFps.Evidence select(PcSpecs pc,long appId,String resolution,List<PcFps.Sample> samples){
+  var matching=samples.stream().filter(s->s.appId()==appId&&s.resolution().equals(resolution)&&key(s.gpu()).equals(key(pc.gpuModel()))&&Double.isFinite(s.averageFps())&&s.averageFps()>0&&s.sourceUrl().startsWith("https://www.notebookcheck.net/")).toList();
+  if(matching.isEmpty())return new PcFps.Evidence("NO_DATA",null,null,"","NONE",List.of(),List.of("같은 GPU·게임·해상도의 검증된 실측 자료를 아직 확보하지 못했어요. 해상도 배율로 FPS를 추측하지 않아요."));
+  var notes=new ArrayList<String>();notes.add("아래 수치는 외부 측정 PC의 참고 실측이며, 현재 PC의 실제 FPS나 검증된 예상 범위가 아니에요.");
+  if(matching.stream().anyMatch(s->!key(s.cpu()).equals(key(pc.cpuModel()))))notes.add("측정 CPU가 현재 PC와 다른 자료가 있어요.");
+  notes.add("RAM 규격·채널·전력 제한·드라이버·게임 빌드가 일치하는지 확인되지 않아 예상 FPS 산정은 보류했어요.");
+  notes.add("평균 FPS만 제공해요. 순간 최저 FPS·1% low 또는 프레임 생성 결과와 혼동하지 마세요.");
+  var projection=PcFpsProjection.project(pc,matching);
+  if(projection!=null){
+   notes.set(0,"동일 CPU·GPU의 과거 평균 실측값을 반올림한 참고 예상이에요. 현재 PC에서 측정한 값은 아니에요.");
+   notes.set(notes.size()-2,"현재 RAM 용량이 측정 PC 이상이라는 조건만 확인했어요. RAM 세대·속도·채널, 전력·드라이버·게임 빌드 차이를 보정하지 못한 낮은 신뢰도의 임시 추정이며 정확도 검증은 아직 없어요.");
+   return new PcFps.Evidence("REFERENCE_PROJECTION",null,null,projection.preset(),"LOW",matching,List.copyOf(notes),projection);
+  }
+  return new PcFps.Evidence("REFERENCE_ONLY",null,null,"각 측정 옵션 확인","REFERENCE",matching,List.copyOf(notes));
+ }
+ private static String key(String value){return Objects.toString(value,"").toLowerCase(Locale.ROOT).replace("(r)","").replace("(tm)","").replaceAll("[^\\p{L}\\p{N}]","");}
+}
+
