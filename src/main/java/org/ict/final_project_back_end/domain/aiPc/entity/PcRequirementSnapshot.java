@@ -11,7 +11,8 @@ public class PcRequirementSnapshot {
  @Column(length=16000,nullable=false) private String recommendedText;
  private boolean windowsSupported;
  @Column(length=50,nullable=false) private String checkedAt;
+ @Column(length=300) private String sourceUrl;
  protected PcRequirementSnapshot(){}
- public PcRequirementSnapshot(PcGameRequirements d){appId=d.appId();name=d.name();minimumText=d.minimum();recommendedText=d.recommended();windowsSupported=d.windows();checkedAt=d.checkedAt();}
- public PcGameRequirements data(){return new PcGameRequirements(appId,name,minimumText,recommendedText,windowsSupported,"https://store.steampowered.com/app/"+appId+"/",checkedAt);}
+ public PcRequirementSnapshot(PcGameRequirements d){appId=d.appId();name=d.name();minimumText=d.minimum();recommendedText=d.recommended();windowsSupported=d.windows();checkedAt=d.checkedAt();sourceUrl=d.source();}
+ public PcGameRequirements data(){return new PcGameRequirements(appId,name,minimumText,recommendedText,windowsSupported,sourceUrl==null?"https://store.steampowered.com/app/"+appId+"/":sourceUrl,checkedAt);}
 }

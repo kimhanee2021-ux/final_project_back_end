@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS pc_requirement_snapshots (
  recommended_text MEDIUMTEXT NOT NULL,
  windows_supported BIT(1) NOT NULL,
  checked_at VARCHAR(50) NOT NULL,
+ source_url VARCHAR(300) NULL,
  INDEX idx_pc_req_app_checked (app_id,checked_at)
 ) DEFAULT CHARSET=utf8mb4;

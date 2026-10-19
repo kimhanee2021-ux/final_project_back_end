@@ -49,5 +49,14 @@ class PcApiTest {
   verify(gemini,times(5)).explain(any(),any(),any());
  }
  private String body(int id){return "{\"appId\":"+id+",\"specs\":{\"cpuModel\":\"CPU 123\",\"ramGB\":32,\"storageFreeGB\":100}}";}
+ @Test void delayedAiKeepsOfficialComparisonAndClearlyMarksMissingExplanation()throws Exception{
+  when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/?cc=kr","2026-10-19T00:00:00Z"));
+  when(gemini.explain(any(),any(),any())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.GATEWAY_TIMEOUT,"upstream detail must stay private"));
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isOk()).andExpect(jsonPath("$.gameName").value("공식 게임")).andExpect(jsonPath("$.grade").value("X")).andExpect(jsonPath("$.explanationStatus").value("UNAVAILABLE")).andExpect(jsonPath("$.requirements.source").value("https://store.steampowered.com/app/1/?cc=kr")).andExpect(jsonPath("$.summary").value(org.hamcrest.Matchers.containsString("AI 해설"))).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("upstream detail"))));
+ }
+ @Test void missingOfficialSourceStillFailsInsteadOfInventingComparison()throws Exception{
+  when(requirements.get(1)).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"공식 자료 조회 실패"));
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isServiceUnavailable());verifyNoInteractions(gemini);
+ }
  private MockMultipartFile photo(String mime)throws Exception{var bytes=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,1),"png",bytes);return new MockMultipartFile("image","pc.png",mime,bytes.toByteArray());}
 }
