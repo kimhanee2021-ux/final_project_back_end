@@ -48,6 +48,11 @@ class PcApiTest {
   for(int id=1;id<=5;id++)mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(id))).andExpect(status().isOk()).andExpect(jsonPath("$.appId").value(id)).andExpect(jsonPath("$.grade").value("X")).andExpect(jsonPath("$.resolutions[0].explanation").value("실측 자료 없음"));
   verify(gemini,times(5)).explain(any(),any(),any());
  }
+ @Test void externalQuotaKeepsComparisonButMarksRateLimited()throws Exception{
+  when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/","2026-10-19T00:00:00Z"));
+  when(gemini.explain(any(),any(),any())).thenThrow(new org.ict.final_project_back_end.domain.aiCommon.exception.AiException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,"private provider detail"));
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(1))).andExpect(status().isOk()).andExpect(jsonPath("$.explanationStatus").value("RATE_LIMITED")).andExpect(jsonPath("$.checks").isNotEmpty()).andExpect(jsonPath("$.summary").value(org.hamcrest.Matchers.containsString("이용 한도"))).andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("private provider detail"))));
+ }
  private String body(int id){return "{\"appId\":"+id+",\"specs\":{\"cpuModel\":\"CPU 123\",\"ramGB\":32,\"storageFreeGB\":100}}";}
  @Test void delayedAiKeepsOfficialComparisonAndClearlyMarksMissingExplanation()throws Exception{
   when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/?cc=kr","2026-10-19T00:00:00Z"));

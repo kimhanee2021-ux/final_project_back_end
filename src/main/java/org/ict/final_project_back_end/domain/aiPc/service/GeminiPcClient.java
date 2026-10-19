@@ -18,9 +18,11 @@ public class GeminiPcClient extends GeminiSupport {
   try{
    var body=Map.of("systemInstruction",Map.of("parts",List.of(Map.of("text",instructions))),"contents",List.of(Map.of("role","user","parts",parts)),"generationConfig",Map.of("responseMimeType","application/json","responseJsonSchema",schema,"maxOutputTokens",4096));
    var req=HttpRequest.newBuilder(URI.create(baseUrl+"/v1beta/models/"+model+":generateContent")).timeout(Duration.ofSeconds(90)).header("Content-Type","application/json").header("x-goog-api-key",key).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
-   var response=http.send(req,HttpResponse.BodyHandlers.ofByteArray());if(response.statusCode()==429)throw new AiException(TOO_MANY_REQUESTS,"AI 이용 한도에 도달했어요. 잠시 후 다시 시도해주세요.");
+   var response=http.send(req,HttpResponse.BodyHandlers.ofByteArray());
+   if(response.statusCode()!=200)log.warn("PC Gemini request failed: HTTP {}",response.statusCode());
+   if(response.statusCode()==429)throw new AiException(TOO_MANY_REQUESTS,"AI 이용 한도에 도달했어요. 잠시 후 다시 시도해주세요.");
    if(response.statusCode()!=200||response.body().length>131072)throw invalid();
-   var candidate=json.readTree(response.body()).path("candidates").path(0);if(!"STOP".equals(candidate.path("finishReason").asText()))throw invalid();
+   var candidate=json.readTree(response.body()).path("candidates").path(0);if(!"STOP".equals(candidate.path("finishReason").asText())){log.warn("PC Gemini response incomplete: maxTokens={}, candidatePresent={}","MAX_TOKENS".equals(candidate.path("finishReason").asText()),!candidate.isMissingNode());throw invalid();}
    var text=new StringBuilder();for(var p:candidate.path("content").path("parts"))if(!p.path("thought").asBoolean())text.append(p.path("text").asText(""));
    return json.readTree(text.toString());
   }catch(AiException e){throw e;}catch(java.net.http.HttpTimeoutException e){throw new AiException(GATEWAY_TIMEOUT,"AI 분석이 지연되고 있어요. 잠시 후 다시 시도해주세요.");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiException(SERVICE_UNAVAILABLE,"AI 분석이 중단됐어요.");}catch(Exception e){throw invalid();}

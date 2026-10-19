@@ -60,3 +60,11 @@
 - 공식 자료/규칙 비교 후 Gemini 해설 502/503/504/외부429 또는 응답 검증 실패 시 explanationStatus=UNAVAILABLE로 공식 비교를 반환. 인증/로컬 제한/공식 자료 실패는 정상 결과로 변환하지 않음.
 - 실제 추가3게임 공식 비교 확인, 당시 Gemini 해설은 UNAVAILABLE. 해설 실패 원인은 미확정이며 정상 AI 해설로 표시하지 않음. 임시 검증 회원 삭제204 확인.
 - 백엔드 전체159테스트 실패/오류0. 실측FPS/A~D 및 부품 개별 장착 호환 확정은 지원하지 않음.
+
+## 외부 AI 한도 확인 및 요청 절약
+- 실제 서버에서 Overwatch/Hollow Knight/Elden Ring 해설 READY를 각각 확인한 뒤, 추가 5개 연속 검증에서는 PUBG READY 후 나머지 요청이 공급자429로 제한됨. 전체5개 연속 AI 해설 성공은 아직 미검증.
+- 공식 오류: RESOURCE_EXHAUSTED, generate_content_free_tier_requests, limit20, gemini-3.8-flash(현재 gemini-flash-latest 별칭 응답). 당시 재시도 안내 약19시간. 전체 모델/모든 계정 공통 한도라는 뜻은 아님.
+- RATE_LIMITED 상태는 공식 비교를 유지하지만 이후 자동 게임 요청은 중단. 완료 결과/현재 게임 출처 보존. UNAVAILABLE 일반 장애와 구분. UI에 이용 한도 표시.
+- 서버에는 HTTP상태/잘림 여부만 기록. 응답본문/키/사진/개인 사양은 로그에 남기지 않음.
+- 로컬 테스트는 외부 AI 호출 없이 검증. 프런트51테스트 및 lint/build PASS. 유료 전환/결제/다른 키로 우회하지 않음.
+- 공식 한도 문서: https://ai.google.dev/gemini-api/docs/rate-limits (프로젝트/모델별 한도 및 일일 초기화 안내).
