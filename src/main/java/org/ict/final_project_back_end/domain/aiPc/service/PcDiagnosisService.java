@@ -10,8 +10,13 @@ public class PcDiagnosisService {
  private final PcPartsService parts;private final GeminiPcClient gemini;private final AiRateLimit limit;private final UserRepository users;private final PcRequirementsClient requirements;
  public PcDiagnosisService(GeminiPcClient g,AiRateLimit l,UserRepository u,PcRequirementsClient r,PcPartsService p){parts=p;gemini=g;limit=l;users=u;requirements=r;}
  private void authenticated(Long id){if(id==null||!users.existsById(id))throw new AiException(UNAUTHORIZED,"로그인 후 PC 진단을 이용해주세요.");}
+ public String provider(Long id){authenticated(id);return gemini.provider();}
  public java.util.List<PcRequirementsClient.SearchGame> search(Long id,String keyword){authenticated(id);return requirements.search(keyword);}
  public PcDiagnosis.Extraction extract(Long id,MultipartFile image){
+  return extract(id,image,"");
+ }
+ public PcDiagnosis.Extraction extract(Long id,MultipartFile image,String expectedProvider){
+  authenticated(id);if(!expectedProvider.isBlank()&&!expectedProvider.equals(gemini.provider()))throw new AiException(CONFLICT,"AI 공급자가 변경됐어요. 창을 다시 열어 전송 대상을 확인해주세요.");
   authenticated(id);if(image.isEmpty())throw new AiException(BAD_REQUEST,"사진을 선택해주세요.");if(image.getSize()>10485760)throw new AiException(PAYLOAD_TOO_LARGE,"10MB 이하 사진을 선택해주세요.");
   String mime=image.getContentType();if(mime==null||!Set.of("image/png","image/jpeg","image/webp").contains(mime))throw new AiException(BAD_REQUEST,"JPG·PNG·WEBP 사진을 선택해주세요.");
   byte[] bytes;try{bytes=image.getBytes();AiImageValidator.validateImage(bytes,mime);}catch(AiException e){throw e;}catch(Exception e){throw new AiException(BAD_REQUEST,"정상적인 사진을 선택해주세요.");}

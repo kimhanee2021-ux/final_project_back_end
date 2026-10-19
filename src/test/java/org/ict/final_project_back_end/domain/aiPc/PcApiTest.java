@@ -37,6 +37,13 @@ class PcApiTest {
   when(gemini.extract(any(),eq("image/png"))).thenReturn(new PcDiagnosis.Extraction(new PcSpecs("CPU 123","","GPU 456","",32.0,"",null,null,"Windows 10"),java.util.List.of("일부 정보 없음")));
   mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/png")).header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.specs.ramGB").value(32)).andExpect(jsonPath("$.specs.storageFreeGB").doesNotExist());
  }
+ @Test void photoProviderMustMatchDisplayedConsentBeforeSending()throws Exception{
+  when(gemini.provider()).thenReturn("Groq");
+  mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/png")).param("provider","Gemini").header("Authorization",token)).andExpect(status().isConflict());
+  verify(gemini,never()).extract(any(),anyString());
+  mvc.perform(get("/api/ai/pc/provider").header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("Groq"));
+  mvc.perform(get("/api/ai/pc/provider")).andExpect(status().isUnauthorized());
+ }
  @Test void impossibleCapacityAndMissingSpecsAreRejected()throws Exception{
   mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content("{\"appId\":1,\"specs\":{\"ramGB\":16,\"storageTotalGB\":10,\"storageFreeGB\":11}}")).andExpect(status().isBadRequest());
   mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content("{\"appId\":1,\"specs\":{}}")).andExpect(status().isBadRequest());verifyNoInteractions(gemini,requirements);
