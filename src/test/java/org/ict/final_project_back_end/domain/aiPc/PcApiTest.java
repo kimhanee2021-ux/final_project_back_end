@@ -1,0 +1,53 @@
+package org.ict.final_project_back_end.domain.aiPc;
+import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.mock.web.MockMultipartFile;
+import org.ict.final_project_back_end.domain.aiPc.service.*;
+import org.ict.final_project_back_end.domain.aiPc.dto.*;
+import org.ict.final_project_back_end.domain.user.repository.UserRepository;
+import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.global.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest @AutoConfigureMockMvc @Transactional
+class PcApiTest {
+ @Autowired MockMvc mvc;@Autowired UserRepository users;@Autowired JwtService jwt;
+ @MockitoBean GeminiPcClient gemini;@MockitoBean PcRequirementsClient requirements;@MockitoBean PcPartsService parts;
+ String token;
+ @BeforeEach void setup(){var user=users.save(User.builder().email(java.util.UUID.randomUUID()+"@example.invalid").nickname(java.util.UUID.randomUUID().toString()).passwordHash("test").build());token="Bearer "+jwt.generateToken(user.getId(),user.getEmail());}
+ @Test void unauthenticatedPhotoAndAssessmentAreRejected()throws Exception{
+  mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/png"))).andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/ai/pc/assess").contentType("application/json").content(body(1))).andExpect(status().isUnauthorized());
+  verifyNoInteractions(gemini);
+ }
+ @Test void wrongMimeAndOversizeDoNotReachAi()throws Exception{
+  mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/jpeg")).header("Authorization",token)).andExpect(status().isBadRequest());
+  mvc.perform(multipart("/api/ai/pc/extract").file(new MockMultipartFile("image","large.png","image/png",new byte[10485761])).header("Authorization",token)).andExpect(status().isPayloadTooLarge());
+  verifyNoInteractions(gemini);
+ }
+ @Test void extractionReturnsStructuredFields()throws Exception{
+  when(gemini.extract(any(),eq("image/png"))).thenReturn(new PcDiagnosis.Extraction(new PcSpecs("CPU 123","","GPU 456","",32.0,"",null,null,"Windows 10"),java.util.List.of("일부 정보 없음")));
+  mvc.perform(multipart("/api/ai/pc/extract").file(photo("image/png")).header("Authorization",token)).andExpect(status().isOk()).andExpect(jsonPath("$.specs.ramGB").value(32)).andExpect(jsonPath("$.specs.storageFreeGB").doesNotExist());
+ }
+ @Test void impossibleCapacityAndMissingSpecsAreRejected()throws Exception{
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content("{\"appId\":1,\"specs\":{\"ramGB\":16,\"storageTotalGB\":10,\"storageFreeGB\":11}}")).andExpect(status().isBadRequest());
+  mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content("{\"appId\":1,\"specs\":{}}")).andExpect(status().isBadRequest());verifyNoInteractions(gemini,requirements);
+ }
+ @Test void fiveOwnedGamesUseSameRealAssessmentPathWithoutInventingFps()throws Exception{
+  var answer=new ObjectMapper().readTree("{\"summary\":\"비교 근거 부족\",\"fhd\":\"실측 자료 없음\",\"qhd\":\"실측 자료 없음\",\"uhd\":\"실측 자료 없음\",\"settings\":[\"설정 확인\"],\"upgradeChecks\":[\"호환 확인\"],\"limitation\":\"평가 불가\"}");
+  when(requirements.get(anyLong())).thenAnswer(i->new PcGameRequirements(i.getArgument(0),"게임 "+i.getArgument(0),"Memory: 8 GB Storage: 5 GB", "",true,"https://store.steampowered.com/app/"+i.getArgument(0)+"/","2026-10-19T00:00:00Z"));
+  when(gemini.explain(any(),any(),any())).thenReturn(answer);when(gemini.explanation(any(),anyString(),anyInt())).thenAnswer(i->answer.path((String)i.getArgument(1)).asText());when(gemini.list(any(),anyString())).thenReturn(java.util.List.of("확인 필요"));
+  for(int id=1;id<=5;id++)mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(body(id))).andExpect(status().isOk()).andExpect(jsonPath("$.appId").value(id)).andExpect(jsonPath("$.grade").value("X")).andExpect(jsonPath("$.resolutions[0].explanation").value("실측 자료 없음"));
+  verify(gemini,times(5)).explain(any(),any(),any());
+ }
+ private String body(int id){return "{\"appId\":"+id+",\"specs\":{\"cpuModel\":\"CPU 123\",\"ramGB\":32,\"storageFreeGB\":100}}";}
+ private MockMultipartFile photo(String mime)throws Exception{var bytes=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,1),"png",bytes);return new MockMultipartFile("image","pc.png",mime,bytes.toByteArray());}
+}
