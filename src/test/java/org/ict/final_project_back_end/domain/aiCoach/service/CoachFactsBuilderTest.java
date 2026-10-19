@@ -138,6 +138,74 @@ class CoachFactsBuilderTest {
   }
 
   @Test
+  void patternsDescribeUnplayedMoneyPlayConcentrationPriceGenreAndDiscountReliance() {
+    Map<String, Object> facts = CoachFactsBuilder.build(history(games, List.of()), null, TODAY);
+    Map<String, Object> patterns = get(facts, "patterns");
+    // 유료 3개 중 Ori 2(5,000원)만 1시간 미만
+    Map<String, Object> unplayed = get(patterns, "unplayed");
+    assertEquals(1, unplayed.get("games"));
+    assertEquals(5000, unplayed.get("spentKrw"));
+    assertEquals(33L, unplayed.get("percentOfPaidGames"));
+    assertEquals(11L, unplayed.get("percentOfSpending"));
+    // 총 50시간 중 Dead Cells 40시간(80%), 상위 3개 48시간(96%)
+    Map<String, Object> concentration = get(patterns, "playConcentration");
+    assertEquals("Dead Cells", concentration.get("topGameName"));
+    assertEquals(80L, concentration.get("topGamePercent"));
+    assertEquals(96L, concentration.get("top3Percent"));
+    Map<String, Object> price = get(patterns, "pricePattern");
+    assertEquals(15000L, price.get("averageKrw"));
+    assertEquals(1L, price.get("under10000Games"));
+    // 1시간 이상 플레이한 장르 중 액션 500원/시간(최고), RPG 10,000원/시간(최저)
+    Map<String, Object> best = get(patterns, "bestValueGenre");
+    assertEquals("액션", best.get("genre"));
+    assertEquals(500L, best.get("hourlyCostKrw"));
+    Map<String, Object> worst = get(patterns, "worstValueGenre");
+    assertEquals("RPG", worst.get("genre"));
+    // 할인 구매(Dead Cells 20,000 + Ori 5,000)가 구매 지출 45,000원의 56%
+    Map<String, Object> discount = get(patterns, "discountReliance");
+    assertEquals(25000, discount.get("discountedSpentKrw"));
+    assertEquals(56L, discount.get("discountedSpendPercent"));
+  }
+
+  @Test
+  void profileTypeFollowsPriorityAndNeverContainsNumbers() {
+    Map<String, Object> patterns = get(CoachFactsBuilder.build(history(games, List.of()), null, TODAY), "patterns");
+    Map<String, Object> profile = get(patterns, "profile");
+    assertEquals("몰입형", profile.get("name"));
+    assertFalse(((String) profile.get("meaning")).matches(".*\\d.*"));
+    // 안 한 게임이 40% 이상이면 수집가형이 먼저
+    List<SpendingGameResponse> hoarder = List.of(
+        game(1, "A", "Action", 10000, "CONFIRMED", 0, LocalDate.of(2026, 1, 1), 0, 0),
+        game(2, "B", "Action", 10000, "CONFIRMED", 0, LocalDate.of(2026, 1, 2), 0, 0),
+        game(3, "C", "Action", 10000, "CONFIRMED", 30, LocalDate.of(2026, 1, 3), 0, 0));
+    Map<String, Object> hoarderPatterns = get(CoachFactsBuilder.build(history(hoarder, List.of()), null, TODAY), "patterns");
+    Map<String, Object> hoarderProfile = get(hoarderPatterns, "profile");
+    assertEquals("수집가형", hoarderProfile.get("name"));
+  }
+
+  @Test
+  void threeMonthTrendComparesRecentAndPreviousThreeMonths() {
+    List<PurchaseView> transactions = List.of(
+        new PurchaseView(LocalDate.of(2026, 10, 10), "PURCHASE", 5000, 2L, List.of("Ori 2"), 4000),
+        new PurchaseView(LocalDate.of(2026, 6, 5), "PURCHASE", 20000, 1L, List.of("Dead Cells"), 10000));
+    Map<String, Object> facts = CoachFactsBuilder.build(history(games, transactions), null, TODAY);
+    Map<String, Object> comparisons = get(facts, "comparisons");
+    Map<String, Object> trend = get(comparisons, "recent3VsPrevious3Months");
+    assertEquals(5000, trend.get("recentSpentKrw"));
+    assertEquals(20000, trend.get("previousSpentKrw"));
+    assertEquals("감소", trend.get("direction"));
+    assertEquals(75L, trend.get("changePercent"));
+  }
+
+  @Test
+  void patternsWithoutPurchaseHistoryHaveNoDiscountRelianceButStillHaveAType() {
+    SpendingAnalysisResponse estimated = new SpendingAnalysisResponse(TODAY, "KRW_LIST_PRICE", games, false, 0, 0, 0, 0, List.of());
+    Map<String, Object> patterns = get(CoachFactsBuilder.build(estimated, null, TODAY), "patterns");
+    assertFalse(patterns.containsKey("discountReliance"));
+    assertTrue(patterns.containsKey("profile"));
+  }
+
+  @Test
   void highlightsHaveNoYearOrMonthWithoutPurchaseHistory() {
     SpendingAnalysisResponse estimated = new SpendingAnalysisResponse(TODAY, "KRW_LIST_PRICE", games, false, 0, 0, 0, 0, List.of());
     Map<String, Object> highlights = get(CoachFactsBuilder.build(estimated, null, TODAY), "highlights");

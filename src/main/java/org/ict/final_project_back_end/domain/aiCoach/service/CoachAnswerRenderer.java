@@ -49,12 +49,22 @@ public final class CoachAnswerRenderer {
       Map.entry("changeKrw", "지출 차이"), Map.entry("changePercent", "지출 변화율"),
       Map.entry("averagePerMonthKrw", "월평균 지출"), Map.entry("dlcCount", "DLC 수"), Map.entry("name", "이름"),
       Map.entry("thisYear", "올해"), Map.entry("lastYear", "작년"), Map.entry("direction", "변화"),
-      Map.entry("year", "연도"), Map.entry("month", "월"));
+      Map.entry("year", "연도"), Map.entry("month", "월"),
+      Map.entry("percentOfPaidGames", "유료 게임 중 비율"), Map.entry("percentOfSpending", "전체 지출 중 비율"),
+      Map.entry("topGamePercent", "가장 오래 한 게임 비중"), Map.entry("top3Percent", "상위 3개 게임 비중"),
+      Map.entry("topGameHours", "가장 오래 한 게임 시간"), Map.entry("averageKrw", "평균 구매 금액"),
+      Map.entry("under10000Games", "1만 원 미만 구매 수"), Map.entry("under10000Percent", "1만 원 미만 구매 비율"),
+      Map.entry("over30000Games", "3만 원 이상 구매 수"), Map.entry("discountedSpentKrw", "할인 구매 지출"),
+      Map.entry("discountedSpendPercent", "할인 구매 지출 비중"), Map.entry("savedKrw", "아낀 금액"),
+      Map.entry("recentSpentKrw", "최근 3개월 지출"), Map.entry("previousSpentKrw", "그 전 3개월 지출"));
 
   private static final Map<String, String> SECTION_LABELS = Map.ofEntries(
       Map.entry("totals", ""), Map.entry("thisMonth", "이번 달"), Map.entry("highlights", ""),
       Map.entry("mostSpentYear", "가장 많이 쓴 해"), Map.entry("mostSpentMonth", "가장 많이 쓴 달"),
-      Map.entry("mostExpensiveGame", ""), Map.entry("mostPlayedGame", ""), Map.entry("discountHabit", ""),
+      Map.entry("mostExpensiveGame", ""), Map.entry("mostPlayedGame", ""),
+      Map.entry("patterns", ""), Map.entry("unplayed", "안 한 게임"), Map.entry("playConcentration", "플레이 집중도"),
+      Map.entry("pricePattern", "구매 가격대"), Map.entry("discountReliance", "할인 의존도"), Map.entry("profile", "소비 유형"),
+      Map.entry("recent3VsPrevious3Months", "3개월 추세"), Map.entry("discountHabit", ""),
       Map.entry("comparisons", ""), Map.entry("thisYearVsLastYear", "작년 대비 올해"), Map.entry("last12Months", "최근 12개월"),
       Map.entry("spendingByGenre", ""), Map.entry("unplayedPaidGames", ""), Map.entry("bestValueGames", ""),
       Map.entry("worstValueGames", ""), Map.entry("refundableGames", ""), Map.entry("playingRecently", ""),
@@ -81,7 +91,7 @@ public final class CoachAnswerRenderer {
       } else {
         String shown = format(resolved.field(), resolved.value());
         out.append(shown);
-        if (!"name".equals(resolved.field()) && !"genre".equals(resolved.field()) && !"relative".equals(resolved.field())) {
+        if (!isLabelField(resolved.field())) {
           evidence.putIfAbsent(path, new CoachChatResponse.Evidence(describe(facts, path), shown));
         }
         // AI는 값의 받침을 모르니 바로 뒤 조사를 실제 값에 맞춘다 ("11,117원를" -> "11,117원을", "101원예요" -> "101원이에요")
@@ -113,8 +123,18 @@ public final class CoachAnswerRenderer {
   private record Resolved(String field, Object value) {
   }
 
+  // 이름·장르·설명 같은 글자 값은 숫자 근거가 아니라서 "근거 보기"에 넣지 않는다
+  private static boolean isLabelField(String field) {
+    return field.equals("name") || field.equals("genre") || field.equals("relative") || field.equals("meaning")
+        || field.endsWith("Name");
+  }
+
   // 받침 유무에 따라 바뀌는 조사 쌍 (받침 있을 때, 없을 때). 긴 것부터 검사한다
   private static final String[][] PARTICLES = {{"이에요", "예요"}, {"을", "를"}, {"은", "는"}, {"과", "와"}};
+
+  private static boolean isHangul(char c) {
+    return c >= 0xAC00 && c <= 0xD7A3;
+  }
 
   // 값 뒤의 조사를 받침에 맞게 out에 붙이고, 원문에서 건너뛸 글자 수를 돌려준다. 한글로 끝나지 않는 값(영문 이름 등)은 그대로 둔다
   private static int fixParticle(String shown, String answer, int from, StringBuilder out) {
@@ -137,6 +157,20 @@ public final class CoachAnswerRenderer {
         out.append(batchim && jong != 8 ? "으로" : "로");
         return written.length();
       }
+    }
+    // AI가 "이(가)", "을(를)"처럼 괄호로 둘 다 쓴 경우: 받침에 맞는 하나만 남긴다
+    for (String[] pair : new String[][]{{"이(가)", "이", "가"}, {"가(이)", "이", "가"}, {"을(를)", "을", "를"}, {"를(을)", "을", "를"},
+        {"은(는)", "은", "는"}, {"는(은)", "은", "는"}, {"과(와)", "과", "와"}, {"와(과)", "과", "와"}}) {
+      if (rest.startsWith(pair[0])) {
+        out.append(batchim ? pair[1] : pair[2]);
+        return pair[0].length();
+      }
+    }
+    // 주격 이/가: 뒤에 한글이 이어지면 다른 낱말("이번", "가장")일 수 있어서 공백·문장부호·끝일 때만 고친다
+    if ((rest.startsWith("이") || rest.startsWith("가")) && !rest.startsWith("이에요")
+        && (rest.length() == 1 || !isHangul(rest.charAt(1)))) {
+      out.append(batchim ? "이" : "가");
+      return 1;
     }
     for (String[] pair : PARTICLES) {
       for (String written : pair) {
@@ -178,7 +212,7 @@ public final class CoachAnswerRenderer {
       if (field.endsWith("Minutes")) {
         return new DecimalFormat("#,##0").format(Math.round(v)) + "분";
       }
-      if (field.endsWith("Percent") || field.equals("percent") || field.endsWith("PercentGap")) {
+      if (field.endsWith("Percent") || field.equals("percent") || field.startsWith("percentOf") || field.endsWith("PercentGap")) {
         return new DecimalFormat("#,##0").format(Math.round(v)) + "%";
       }
       if (field.equals("thisYear") || field.equals("lastYear") || field.equals("year")) {

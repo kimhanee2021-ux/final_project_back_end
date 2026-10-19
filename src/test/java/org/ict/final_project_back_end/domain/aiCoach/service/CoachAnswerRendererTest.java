@@ -24,6 +24,10 @@ class CoachAnswerRendererTest {
     facts.put("discountHabit", Map.of("discountedUnplayedPercent", 33L));
     facts.put("refundableGames", List.of(Map.of("name", "Ori 2", "refundDeadline", "2026-10-24")));
     facts.put("ownedGames", Map.of("250900", Map.of("name", "Isaac", "playMinutes", 48)));
+    facts.put("patterns", Map.of(
+        "profile", Map.of("name", "몰입형", "meaning", "마음에 든 한 게임에 시간을 깊게 쏟는 편"),
+        "unplayed", Map.of("games", 6, "spentKrw", 38000, "percentOfPaidGames", 18L),
+        "playConcentration", Map.of("topGameName", "PUBG", "topGamePercent", 42L)));
     facts.put("highlights", Map.of(
         "mostSpentYear", Map.of("year", 2024, "spentKrw", 139998),
         "mostSpentMonth", Map.of("month", "2025-03", "spentKrw", 23000)));
@@ -76,6 +80,40 @@ class CoachAnswerRendererTest {
         new CoachChatResponse.Evidence("가장 많이 쓴 해 연도", "2024년"),
         new CoachChatResponse.Evidence("가장 많이 쓴 해 지출", "139,998원"),
         new CoachChatResponse.Evidence("가장 많이 쓴 달 월", "2025년 3월")), r.evidence());
+  }
+
+  @Test
+  void rendersAStructuredAnalysisWithBulletsAndKeepsTextValuesOutOfEvidence() {
+    CoachAnswerRenderer.Rendered r = CoachAnswerRenderer.render(
+        "{{patterns.profile.name}}이에요. {{patterns.profile.meaning}}.\n"
+            + "• {{patterns.playConcentration.topGameName}}이(가) 전체 플레이의 {{patterns.playConcentration.topGamePercent}}를 차지해요.\n"
+            + "• 안 한 게임 {{patterns.unplayed.games}}개에 {{patterns.unplayed.spentKrw}}가 묶여 있어요 "
+            + "(유료 게임의 {{patterns.unplayed.percentOfPaidGames}}).", facts, "내 소비 패턴 분석해 줘");
+    assertTrue(r.ok(), r.problems().toString());
+    assertTrue(r.text().startsWith("몰입형이에요. 마음에 든 한 게임에 시간을 깊게 쏟는 편."), r.text());
+    assertTrue(r.text().contains("\n• PUBG"), r.text());
+    assertTrue(r.text().contains("42%"), r.text());
+    assertTrue(r.text().contains("6개에 38,000원이"), r.text());
+    // 이름·설명 같은 글자 값은 근거 목록에서 빠지고, 숫자 값만 남는다
+    assertEquals(List.of("플레이 집중도 가장 오래 한 게임 비중", "안 한 게임 게임 수", "안 한 게임 지출", "안 한 게임 유료 게임 중 비율"),
+        r.evidence().stream().map(CoachChatResponse.Evidence::label).toList());
+  }
+
+  @Test
+  void fixesSubjectParticlesAndParenthesizedParticlesAfterValues() {
+    // 38,000원+가 -> 이, 42%+이 -> 가, 괄호 조사는 받침에 맞는 하나만, "이번"·"가장" 같은 낱말은 건드리지 않는다
+    assertEquals("38,000원이 묶여 있어요",
+        CoachAnswerRenderer.render("{{patterns.unplayed.spentKrw}}가 묶여 있어요", facts, "").text());
+    assertEquals("42%가 차지해요",
+        CoachAnswerRenderer.render("{{patterns.playConcentration.topGamePercent}}이 차지해요", facts, "").text());
+    assertEquals("38,000원이 묶여 있어요",
+        CoachAnswerRenderer.render("{{patterns.unplayed.spentKrw}}이(가) 묶여 있어요", facts, "").text());
+    assertEquals("42%는 높아요",
+        CoachAnswerRenderer.render("{{patterns.playConcentration.topGamePercent}}은(는) 높아요", facts, "").text());
+    assertEquals("38,000원 이번 달 가장 커요",
+        CoachAnswerRenderer.render("{{patterns.unplayed.spentKrw}} 이번 달 가장 커요", facts, "").text());
+    assertEquals("42%가장 커요",
+        CoachAnswerRenderer.render("{{patterns.playConcentration.topGamePercent}}가장 커요", facts, "").text());
   }
 
   @Test
