@@ -92,7 +92,7 @@ public final class CoachAnswerRenderer {
         String shown = format(resolved.field(), resolved.value());
         out.append(shown);
         if (!isLabelField(resolved.field())) {
-          evidence.putIfAbsent(path, new CoachChatResponse.Evidence(describe(facts, path), shown));
+          evidence.putIfAbsent(path, evidenceOf(facts, path, resolved, shown));
         }
         // AI는 값의 받침을 모르니 바로 뒤 조사를 실제 값에 맞춘다 ("11,117원를" -> "11,117원을", "101원예요" -> "101원이에요")
         int skip = fixParticle(shown, answer, matcher.end(), out);
@@ -120,13 +120,52 @@ public final class CoachAnswerRenderer {
     return new Rendered(text, List.copyOf(evidence.values()), List.copyOf(problems));
   }
 
+  // 근거 한 줄: 막대로 그릴 수 있는 숫자(원·시간·분·%)면 숫자와 단위, 같은 그래프에 묶을 group을 같이 담는다
+  private static CoachChatResponse.Evidence evidenceOf(Map<String, Object> facts, String path, Resolved resolved, String shown) {
+    String label = describe(facts, path);
+    String unit = resolved.value() instanceof Number ? chartUnit(resolved.field()) : null;
+    if (unit == null) {
+      return new CoachChatResponse.Evidence(label, shown);
+    }
+    return new CoachChatResponse.Evidence(label, shown, ((Number) resolved.value()).doubleValue(), unit, groupOf(path));
+  }
+
+  private static String chartUnit(String field) {
+    if (field.endsWith("Krw")) {
+      return "원";
+    }
+    if (field.endsWith("Hours") || field.equals("playHours") || field.equals("hoursLast2Weeks")) {
+      return "시간";
+    }
+    if (field.endsWith("Minutes")) {
+      return "분";
+    }
+    if (field.endsWith("Percent") || field.equals("percent") || field.startsWith("percentOf") || field.endsWith("PercentGap")) {
+      return "%";
+    }
+    return null;
+  }
+
+  // 같은 표의 여러 줄(연도·순번)은 한 묶음: "spendingByYear.2025.spentKrw" -> "spendingByYear.*.spentKrw", 한 표 안의 다른 칸은 "comparisons.thisYearVsLastYear"
+  static String groupOf(String path) {
+    String[] parts = path.split("\\.");
+    StringBuilder parent = new StringBuilder();
+    boolean repeated = false;
+    for (int i = 0; i < parts.length - 1; i++) {
+      boolean index = parts[i].matches("\\d+|\\d{4}-\\d{2}");
+      repeated |= index;
+      parent.append(i == 0 ? "" : ".").append(index ? "*" : parts[i]);
+    }
+    return repeated ? parent + "." + parts[parts.length - 1] : parent.toString();
+  }
+
   private record Resolved(String field, Object value) {
   }
 
   // 이름·장르·설명 같은 글자 값은 숫자 근거가 아니라서 "근거 보기"에 넣지 않는다
   private static boolean isLabelField(String field) {
     return field.equals("name") || field.equals("genre") || field.equals("relative") || field.equals("meaning")
-        || field.endsWith("Name");
+        || field.equals("appId") || field.endsWith("Name");
   }
 
   // 받침 유무에 따라 바뀌는 조사 쌍 (받침 있을 때, 없을 때). 긴 것부터 검사한다

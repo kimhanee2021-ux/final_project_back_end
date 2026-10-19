@@ -43,10 +43,10 @@ class CoachAnswerRendererTest {
     // 조사도 값의 받침에 맞게 고친다: 11,117원+를 -> 을, 101원+예요 -> 이에요
     assertEquals("작년에는 87,765원, 올해는 11,117원을 썼어요. Isaac은 154.2시간 동안 시간당 101원이에요.", r.text());
     assertEquals(List.of(
-        new CoachChatResponse.Evidence("2025년(작년) 지출", "87,765원"),
-        new CoachChatResponse.Evidence("2026년(올해, 진행 중) 지출", "11,117원"),
-        new CoachChatResponse.Evidence("Isaac 플레이 시간", "154.2시간"),
-        new CoachChatResponse.Evidence("Isaac 시간당 비용", "101원")), r.evidence());
+        new CoachChatResponse.Evidence("2025년(작년) 지출", "87,765원", 87765.0, "원", "spendingByYear.*.spentKrw"),
+        new CoachChatResponse.Evidence("2026년(올해, 진행 중) 지출", "11,117원", 11117.0, "원", "spendingByYear.*.spentKrw"),
+        new CoachChatResponse.Evidence("Isaac 플레이 시간", "154.2시간", 154.2, "시간", "bestValueGames.*.playHours"),
+        new CoachChatResponse.Evidence("Isaac 시간당 비용", "101원", 101.0, "원", "bestValueGames.*.hourlyCostKrw")), r.evidence());
   }
 
   @Test
@@ -78,7 +78,7 @@ class CoachAnswerRendererTest {
     assertEquals("2024년에 139,998원으로 가장 많이 썼고, 달로는 2025년 3월이에요.", r.text());
     assertEquals(List.of(
         new CoachChatResponse.Evidence("가장 많이 쓴 해 연도", "2024년"),
-        new CoachChatResponse.Evidence("가장 많이 쓴 해 지출", "139,998원"),
+        new CoachChatResponse.Evidence("가장 많이 쓴 해 지출", "139,998원", 139998.0, "원", "highlights.mostSpentYear"),
         new CoachChatResponse.Evidence("가장 많이 쓴 달 월", "2025년 3월")), r.evidence());
   }
 
@@ -126,6 +126,17 @@ class CoachAnswerRendererTest {
     // 실제 답변: 연도를 앞에 따로 쓰고 (연도가 포함된) 월 값을 또 붙임 -> 한 번만
     assertEquals("가장 많이 쓴 달은 2025년 3월이에요",
         CoachAnswerRenderer.render("가장 많이 쓴 달은 2025년 {{highlights.mostSpentMonth.month}}이에요", facts, "2025년").text());
+  }
+
+  @Test
+  void evidenceCarriesAmountUnitAndGroupSoTheScreenCanDrawBars() {
+    CoachAnswerRenderer.Rendered r = CoachAnswerRenderer.render(
+        "{{patterns.unplayed.percentOfPaidGames}} {{patterns.playConcentration.topGamePercent}} {{totals.totalPlayHours}}", facts, "");
+    assertEquals(List.of(
+        new CoachChatResponse.Evidence("안 한 게임 유료 게임 중 비율", "18%", 18.0, "%", "patterns.unplayed"),
+        new CoachChatResponse.Evidence("플레이 집중도 가장 오래 한 게임 비중", "42%", 42.0, "%", "patterns.playConcentration"),
+        new CoachChatResponse.Evidence("총 플레이 시간", "541.5시간", 541.5, "시간", "totals")), r.evidence());
+    assertEquals("spendingByMonthLast12.*.spentKrw", CoachAnswerRenderer.groupOf("spendingByMonthLast12.2026-03.spentKrw"));
   }
 
   @Test
