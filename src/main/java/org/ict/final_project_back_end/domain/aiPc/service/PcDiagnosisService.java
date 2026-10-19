@@ -21,6 +21,12 @@ public class PcDiagnosisService {
   authenticated(id);var pc=request.specs();
   if(pc.storageTotalGB()!=null&&pc.storageFreeGB()!=null&&pc.storageFreeGB()>pc.storageTotalGB())throw new AiException(BAD_REQUEST,"남은 공간은 총 저장공간보다 클 수 없어요.");
   if(pc.ramGB()==null&& (pc.cpuModel()==null||pc.cpuModel().isBlank())&&(pc.gpuModel()==null||pc.gpuModel().isBlank()))throw new AiException(BAD_REQUEST,"먼저 PC 사양을 확인해주세요.");
+  if(Boolean.FALSE.equals(request.includeAi())){
+   var source=requirements.get(request.appId());if(!source.windows())throw new AiException(BAD_REQUEST,"Windows PC 지원이 확인되지 않은 게임이에요.");
+   var comparison=PcRules.compare(pc,source.minimum());
+   String resolution="실측 FPS 자료가 없어 해상도별 성능을 확정하지 않아요. 아래 공식 요구 사양과 확인 항목을 참고해 주세요.";
+   return new PcDiagnosis.Assessment(source.appId(),source.name(),comparison.grade(),comparison.checks(),"입력한 PC 사양을 공식 최소 요구 사양과 비교했어요. AI를 호출하지 않은 비교 결과예요.",List.of(new PcDiagnosis.Resolution("FHD",resolution),new PcDiagnosis.Resolution("QHD",resolution),new PcDiagnosis.Resolution("4K",resolution)),List.of(),List.of("교체 전 메인보드·전원·장착 공간 등 호환성을 확인해 주세요. 현재 정보만으로 구매 필요성을 확정하지 않아요."),"공식 요구 사양과 입력값의 코드 비교입니다. X는 실행 불가가 아니라 평가 불가이며, 실측 성능을 보장하지 않아요.",source,"NOT_REQUESTED");
+  }
   limit.begin(id);try{
    var source=requirements.get(request.appId());if(!source.windows())throw new AiException(BAD_REQUEST,"Windows PC 지원이 확인되지 않은 게임이에요.");
    var comparison=PcRules.compare(pc,source.minimum());
