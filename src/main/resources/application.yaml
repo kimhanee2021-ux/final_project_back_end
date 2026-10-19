@@ -47,7 +47,7 @@ app:
       provider: ${PC_AI_PROVIDER:auto}
       groq-api-key: ${GROQ_API_KEY:}
       groq-model: ${GROQ_PC_MODEL:qwen/qwen3.8-27b}
-      groq-min-interval-seconds: ${GROQ_PC_MIN_INTERVAL_SECONDS:60}
+      groq-min-interval-seconds: ${GROQ_PC_MIN_INTERVAL_SECONDS:0}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:

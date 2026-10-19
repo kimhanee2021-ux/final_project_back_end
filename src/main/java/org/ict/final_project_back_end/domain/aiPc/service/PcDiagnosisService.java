@@ -22,6 +22,25 @@ public class PcDiagnosisService {
   byte[] bytes;try{bytes=image.getBytes();AiImageValidator.validateImage(bytes,mime);}catch(AiException e){throw e;}catch(Exception e){throw new AiException(BAD_REQUEST,"정상적인 사진을 선택해주세요.");}
   limit.begin(id);try{return gemini.extract(bytes,mime);}finally{limit.end(id);}
  }
+ public List<PcDiagnosis.Assessment> assessBatch(Long id,PcDiagnosis.BatchRequest request){
+  authenticated(id);var pc=request.specs();
+  if(pc.storageTotalGB()!=null&&pc.storageFreeGB()!=null&&pc.storageFreeGB()>pc.storageTotalGB())throw new AiException(BAD_REQUEST,"남은 공간은 총 저장공간보다 클 수 없어요.");
+  if(pc.ramGB()==null&&(pc.cpuModel()==null||pc.cpuModel().isBlank())&&(pc.gpuModel()==null||pc.gpuModel().isBlank()))throw new AiException(BAD_REQUEST,"먼저 PC 사양을 확인해주세요.");
+  if(new HashSet<>(request.appIds()).size()!=request.appIds().size())throw new AiException(BAD_REQUEST,"중복 게임을 제외해주세요.");
+  limit.begin(id);try{
+   var games=request.appIds().stream().map(requirements::get).toList();
+   if(games.stream().anyMatch(g->!g.windows()))throw new AiException(BAD_REQUEST,"Windows 지원이 확인되지 않은 게임이 있어요.");
+   var comparisons=games.stream().map(g->PcRules.compare(pc,g.minimum())).toList();
+   var offers=parts.offers(id);var answer=gemini.explainBatch(pc,games,comparisons,offers);
+   var answers=answer.path("results");if(!answers.isArray()||answers.size()!=games.size())throw new AiException(BAD_GATEWAY,"게임별 AI 응답을 확인하지 못했어요.");
+   var results=new ArrayList<PcDiagnosis.Assessment>();
+   for(int i=0;i<games.size();i++){
+    var g=games.get(i);var comparison=comparisons.get(i);var entry=answers.get(i);if(!entry.path("appId").canConvertToLong()||entry.path("appId").asLong()!=g.appId())throw new AiException(BAD_GATEWAY,"게임별 AI 응답이 일치하지 않아요.");var data=entry.path("analysis");
+    var grade=PcAiAssessment.grade(data,comparison);var recommendations=PcAiRecommendations.parse(data,offers);
+    results.add(new PcDiagnosis.Assessment(g.appId(),g.name(),grade,comparison.checks(),gemini.explanation(data,"summary",1000),List.of(new PcDiagnosis.Resolution("FHD",gemini.explanation(data,"fhd",600),PcFpsEvidence.find(pc,g.appId(),"FHD")),new PcDiagnosis.Resolution("QHD",gemini.explanation(data,"qhd",600),PcFpsEvidence.find(pc,g.appId(),"QHD")),new PcDiagnosis.Resolution("4K",gemini.explanation(data,"uhd",600),PcFpsEvidence.find(pc,g.appId(),"4K"))),gemini.list(data,"settings"),gemini.list(data,"upgradeChecks"),gemini.explanation(data,"limitation",800),g,"READY",recommendations));
+   }return List.copyOf(results);
+  }finally{limit.end(id);}
+ }
  public PcDiagnosis.Assessment assess(Long id,PcDiagnosis.Request request){
   authenticated(id);var pc=request.specs();
   if(pc.storageTotalGB()!=null&&pc.storageFreeGB()!=null&&pc.storageFreeGB()>pc.storageTotalGB())throw new AiException(BAD_REQUEST,"남은 공간은 총 저장공간보다 클 수 없어요.");

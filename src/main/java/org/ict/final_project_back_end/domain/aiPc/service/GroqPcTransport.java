@@ -21,9 +21,10 @@ public class GroqPcTransport {
  private final java.util.concurrent.locks.ReentrantLock requestLock=new java.util.concurrent.locks.ReentrantLock();
  public GroqPcTransport(String key,String model,String base){this(key,model,base,0);}
  @org.springframework.beans.factory.annotation.Autowired
- public GroqPcTransport(@Value("${app.ai.pc.groq-api-key:}")String key,@Value("${app.ai.pc.groq-model:qwen/qwen3.8-27b}")String model,@Value("${app.ai.pc.groq-base-url:https://api.groq.com}")String base,@Value("${app.ai.pc.groq-min-interval-seconds:60}")long interval){this.key=key;this.model=model;this.base=base.replaceAll("/+$","");this.minIntervalMillis=Math.max(0,Math.min(60,interval))*1000;}
+ public GroqPcTransport(@Value("${app.ai.pc.groq-api-key:}")String key,@Value("${app.ai.pc.groq-model:qwen/qwen3.8-27b}")String model,@Value("${app.ai.pc.groq-base-url:https://api.groq.com}")String base,@Value("${app.ai.pc.groq-min-interval-seconds:0}")long interval){this.key=key;this.model=model;this.base=base.replaceAll("/+$","");this.minIntervalMillis=Math.max(0,Math.min(60,interval))*1000;}
  public boolean configured(){return !key.isBlank();}
- public JsonNode ask(String instructions,List<Map<String,Object>> parts,Map<String,Object> schema){
+ public JsonNode ask(String instructions,List<Map<String,Object>> parts,Map<String,Object> schema){return ask(instructions,parts,schema,900);}
+ public JsonNode ask(String instructions,List<Map<String,Object>> parts,Map<String,Object> schema,int requestedOutputLimit){
   if(!configured()||!model.matches("[a-zA-Z0-9/._-]{1,100}"))throw new AiException(SERVICE_UNAVAILABLE,"Groq 연결 설정을 확인해주세요.");
   boolean locked=false;
   try{
@@ -37,17 +38,17 @@ public class GroqPcTransport {
    String concise="\n무료 분석 예산을 위해 JSON 내용은 간결하게 작성하세요. summary100자, fhd/qhd/uhd각35자, settings최대2개 각25자, upgradeChecks최대2개 각40자, limitation40자, recommendations최대1개 reason40자/compatibilityNote60자. 사진 판독의 숫자/단위와 미확인 값 처리는 그대로 지키세요. CPU/GPU의 직접 비교 근거가 없으면 충족으로 단정하지 말고 확인 필요라고 쓰세요. CPU/RAM을 묶어 충족이라고 표현하지 마세요.";
    var body=new LinkedHashMap<String,Object>();body.put("model",model);body.put("messages",List.of(Map.of("role","system","content",instructions+concise),Map.of("role","user","content",content)));
    body.put("response_format",Map.of("type","json_schema","json_schema",Map.of("name","pc_diagnosis","strict",true,"schema",schema)));
-   boolean hasImage=parts.stream().anyMatch(p->p.containsKey("inlineData"));int outputLimit=hasImage?768:900;
+   boolean hasImage=parts.stream().anyMatch(p->p.containsKey("inlineData"));int outputLimit=hasImage?768:Math.max(900,Math.min(2400,requestedOutputLimit));
    body.put("max_completion_tokens",outputLimit);body.put("temperature",0.2);
    if(model.startsWith("qwen/"))body.put("reasoning_effort","none");
    long estimate=outputLimit+(hasImage?2048:0)+instructions.length()+json.writeValueAsString(schema).length()/3;
    for(var part:parts)if(part.get("text") instanceof String text)estimate+=text.length()/2;
    long now=System.currentTimeMillis();long wait=Math.max(nextRequestAt-now,tokensRemaining<estimate?tokenResetAt-now:0);
    // 공급자 응답 헤더를 기준으로 같은 PC 공급자의 연속 요청을 간격 조절한다. 429 자동 재시도는 하지 않는다.
-   if(wait>0){if(wait>60000)throw new AiException(TOO_MANY_REQUESTS,"Groq 토큰 한도가 회복될 때까지 기다려주세요.");Thread.sleep(wait);}
+   if(wait>0)throw new AiException(TOO_MANY_REQUESTS,"Groq 이용 한도 회복 후 다시 분석해주세요.");
    var request=HttpRequest.newBuilder(URI.create(base+"/openai/v1/chat/completions")).timeout(Duration.ofSeconds(90)).header("Content-Type","application/json").header("Authorization","Bearer "+key).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
    var response=http.send(request,HttpResponse.BodyHandlers.ofByteArray());
-   nextRequestAt=System.currentTimeMillis()+minIntervalMillis;
+   nextRequestAt=0; // 고정 간격 대신 공급자가 반환한 실제 잔여 토큰만 확인한다.
    tokensRemaining=response.headers().firstValueAsLong("x-ratelimit-remaining-tokens").orElse(Long.MAX_VALUE);
    long reset=resetDelayMillis(response.headers().firstValue("x-ratelimit-reset-tokens").orElse(""));tokenResetAt=System.currentTimeMillis()+(tokensRemaining==Long.MAX_VALUE?0:Math.max(reset,60000));
    if(response.statusCode()!=200){String code="unknown";if(response.body().length<=131072){try{String rawCode=json.readTree(response.body()).path("error").path("code").asText("unknown");if(rawCode.matches("[a-zA-Z0-9_-]{1,64}"))code=rawCode;}catch(Exception ignored){}}log.warn("PC Groq request failed: HTTP {}, code={}",response.statusCode(),code);}

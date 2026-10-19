@@ -20,4 +20,8 @@ class GroqPcTransportTest {
  @Test void rejectsInvalidJsonAndPermissionFailure(){reply="{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"content\":\"broken\"}}]}";assertThrows(AiException.class,this::ask);status=401;assertEquals(SERVICE_UNAVAILABLE,assertThrows(AiException.class,this::ask).getStatus());}
  @Test void configuredGroqIsSelectedWithoutGeminiFallback(){var groq=mock(GroqPcTransport.class);when(groq.configured()).thenReturn(true);when(groq.ask(anyString(),anyList(),anyMap())).thenThrow(new AiException(TOO_MANY_REQUESTS,"test"));var client=new GeminiPcClient("unused","test","http://127.0.0.1:1",groq,"auto");assertEquals("Groq",client.provider());assertEquals(TOO_MANY_REQUESTS,assertThrows(AiException.class,()->client.extract(new byte[]{1},"image/png")).getStatus());verify(groq).ask(anyString(),anyList(),anyMap());}
  @Test void parsesProviderResetDurationsWithoutGuessingMalformedValues(){assertEquals(7660,GroqPcTransport.resetDelayMillis("7.66s"));assertEquals(62500,GroqPcTransport.resetDelayMillis("1m2.5s"));assertEquals(20,GroqPcTransport.resetDelayMillis("20ms"));assertEquals(0,GroqPcTransport.resetDelayMillis("not-a-delay"));}
+ @Test void explicitLegacyIntervalDoesNotSleepOrRejectNextRequest(){
+  var connection=new GroqPcTransport("test-only","qwen/test","http://127.0.0.1:"+server.getAddress().getPort(),60);
+  assertTimeoutPreemptively(java.time.Duration.ofSeconds(3),()->{for(int i=0;i<2;i++)assertTrue(connection.ask("JSON",List.of(Map.of("text","data")),Map.of("type","object")).path("ok").asBoolean());});
+ }
 }

@@ -15,4 +15,13 @@ class GeminiPcClientTest {
  @Test void truncatedResponseIsNotApplied(){reply="{\"candidates\":[{\"finishReason\":\"MAX_TOKENS\"}]}";assertThrows(AiException.class,()->client.extract(new byte[]{1},"image/png"));}
  @Test void settingsCannotInventMeasuredFps()throws Exception{var data=new ObjectMapper().readTree("{\"settings\":[\"옵션을 낮추면 60 FPS 보장\"]}");assertThrows(AiException.class,()->client.list(data,"settings"));}
  @Test void ignoresAiCalculatedStorageWithoutRawReading()throws Exception{var json=new ObjectMapper();var outer=json.readTree(answer("32"));var inner=(com.fasterxml.jackson.databind.node.ObjectNode)json.readTree(outer.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText());inner.put("storageTotalGB","1413");inner.put("storageFreeGB","1392");inner.put("storageTotalText","");inner.put("storageUsedText","");inner.put("storageFreeText","");((com.fasterxml.jackson.databind.node.ObjectNode)outer.path("candidates").get(0).path("content").path("parts").get(0)).put("text",json.writeValueAsString(inner));reply=outer.toString();var result=client.extract(new byte[]{1},"image/png");assertNull(result.specs().storageTotalGB());assertNull(result.specs().storageFreeGB());}
+ @Test void batchPacksFiveGamesInOneProviderRequest()throws Exception{
+  reply="{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\"{\\\"results\\\":[]}\"}]}}]}";
+  var pc=new org.ict.final_project_back_end.domain.aiPc.dto.PcSpecs("i7-13700","","UHD770","",32.0,"",1000.0,500.0,"");
+  var games=java.util.stream.LongStream.rangeClosed(1,5).mapToObj(i->new org.ict.final_project_back_end.domain.aiPc.dto.PcGameRequirements(i,"game","4 GB RAM","",true,"https://store.steampowered.com/","today")).toList();
+  var comparisons=games.stream().map(g->org.ict.final_project_back_end.domain.aiPc.service.PcRules.compare(pc,g.minimum())).toList();
+  client.explainBatch(pc,games,comparisons,java.util.List.of());
+  var request=new ObjectMapper().readTree(received);String input=request.path("contents").get(0).path("parts").get(0).path("text").asText();
+  assertEquals(5,new ObjectMapper().readTree(input).path("games").size());assertTrue(received.contains("results"));
+ }
 }
