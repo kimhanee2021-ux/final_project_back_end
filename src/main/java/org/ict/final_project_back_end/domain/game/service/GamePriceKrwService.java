@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -49,9 +50,6 @@ public class GamePriceKrwService {
     Map<Long, GamePriceKrw> cached = priceRepository.findAllById(appIds).stream()
         .collect(Collectors.toMap(GamePriceKrw::getAppId, Function.identity()));
     List<Long> targets = selectTargets(appIds, cached, now);
-    if (targets.isEmpty()) {
-      return;
-    }
 
     List<GamePriceKrw> fetched = new ArrayList<>();
     int batches = 0;
@@ -70,29 +68,57 @@ public class GamePriceKrwService {
         break;
       }
     }
-    markFreeGames(fetched, now);
-    priceRepository.saveAll(fetched);
+
+    // 새로 받은 값이 이전에 확인한 무료 여부를 지우지 않게 이어 붙이고, 아직 확인 전인 "가격 없음" 게임을 확인한다
+    Map<Long, GamePriceKrw> latest = new LinkedHashMap<>(cached);
+    for (GamePriceKrw price : fetched) {
+      latest.put(price.getAppId(), carryOverFreeCheck(price, cached.get(price.getAppId())));
+    }
+    Map<Long, GamePriceKrw> toSave = new LinkedHashMap<>();
+    fetched.forEach(price -> toSave.put(price.getAppId(), latest.get(price.getAppId())));
+    checkFreeGames(selectFreeCheckTargets(latest.values(), MAX_FREE_CHECKS_PER_CALL))
+        .forEach(price -> toSave.put(price.getAppId(), price));
+    if (!toSave.isEmpty()) {
+      priceRepository.saveAll(toSave.values());
+    }
   }
 
-  // 가격 정보가 없다고 나온 게임 중 일부를 무료 여부까지 확인해 FREE로 바꾼다
-  private void markFreeGames(List<GamePriceKrw> fetched, LocalDateTime now) {
-    int checks = 0;
-    for (int i = 0; i < fetched.size() && checks < MAX_FREE_CHECKS_PER_CALL; i++) {
-      GamePriceKrw price = fetched.get(i);
-      if (!GamePriceKrw.NO_PRICE.equals(price.getStatus())) {
-        continue;
-      }
-      checks++;
+  // 가격 정보가 없는 게임에 is_free를 한 개씩 물어 FREE로 바꾸거나 "무료 아님"으로 표시한다. 확인한 게임만 돌려준다.
+  private List<GamePriceKrw> checkFreeGames(List<GamePriceKrw> targets) {
+    List<GamePriceKrw> checked = new ArrayList<>();
+    for (GamePriceKrw price : targets) {
       try {
-        if (Boolean.TRUE.equals(steamPriceClient.fetchIsFree(price.getAppId()))) {
-          fetched.set(i, GamePriceKrw.builder().appId(price.getAppId()).status(GamePriceKrw.FREE)
-              .initialKrw(0).finalKrw(0).discountPercent(0).fetchedAt(now).build());
+        if (!checked.isEmpty()) {
+          Thread.sleep(BATCH_INTERVAL_MS);
+        }
+        Boolean free = steamPriceClient.fetchIsFree(price.getAppId());
+        if (free != null) {
+          price.applyFreeCheck(free);
+          checked.add(price);
         }
       } catch (RestClientException e) {
-        log.warn("무료 여부 확인 실패 appId={}", price.getAppId());
-        return;
+        log.warn("무료 여부 확인 실패 appId={}, 다음 조회 때 다시 확인", price.getAppId());
+        break;
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
       }
     }
+    return checked;
+  }
+
+  // 하루마다 다시 받은 값은 is_free를 모르는 묶음 조회 결과라, 이전에 확인해 둔 무료 여부를 그대로 이어 받는다
+  static GamePriceKrw carryOverFreeCheck(GamePriceKrw fresh, GamePriceKrw previous) {
+    if (previous != null && Boolean.TRUE.equals(previous.getFreeChecked())
+        && GamePriceKrw.NO_PRICE.equals(fresh.getStatus())) {
+      fresh.applyFreeCheck(GamePriceKrw.FREE.equals(previous.getStatus()));
+    }
+    return fresh;
+  }
+
+  // 무료 여부를 아직 확인하지 않은 "가격 없음" 게임을 최대 limit개 고른다
+  static List<GamePriceKrw> selectFreeCheckTargets(Collection<GamePriceKrw> prices, int limit) {
+    return prices.stream().filter(GamePriceKrw::needsFreeCheck).limit(limit).toList();
   }
 
   // 아직 가격이 없거나, 마지막으로 받은 지 하루가 지난 게임만 고른다

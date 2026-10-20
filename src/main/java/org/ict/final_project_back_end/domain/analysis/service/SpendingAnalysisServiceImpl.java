@@ -9,6 +9,11 @@ import org.ict.final_project_back_end.domain.game.repository.GameRepository;
 import org.ict.final_project_back_end.domain.game.service.GamePriceKrwService;
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
+import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
+import org.ict.final_project_back_end.domain.purchase.entity.PurchaseTransaction;
+import org.ict.final_project_back_end.domain.purchase.entity.GameLicense;
+import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
+import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
 import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
@@ -17,10 +22,13 @@ import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,7 +38,8 @@ import java.util.stream.Collectors;
 @Service
 public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
 
-  private static final String PRICE_BASIS = "KRW_LIST_PRICE";
+  private static final String LIST_PRICE_BASIS = "KRW_LIST_PRICE";
+  private static final String HISTORY_BASIS = "PURCHASE_HISTORY";
   // 스팀은 장르를 알파벳순으로 저장해서 앞에서부터 고르면 대부분 "Action"이 된다(ELDEN RING = "Action,RPG").
   // 그래서 카탈로그에서 드문(=더 구체적인) 장르를 우선한다. 목록에 없는 장르는 이 뒤에 온다.
   private static final List<String> GENRE_PRIORITY = List.of(
@@ -43,15 +52,21 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
   private final GameRepository gameRepository;
   private final GamePriceKrwRepository priceRepository;
   private final GamePriceKrwService priceService;
+  private final PurchaseTransactionRepository purchaseRepository;
+  private final GameLicenseRepository licenseRepository;
 
   public SpendingAnalysisServiceImpl(UserRepository userRepository, LibraryGameRepository libraryGameRepository,
                                      GameRepository gameRepository, GamePriceKrwRepository priceRepository,
-                                     GamePriceKrwService priceService) {
+                                     GamePriceKrwService priceService,
+                                     PurchaseTransactionRepository purchaseRepository,
+                                     GameLicenseRepository licenseRepository) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.gameRepository = gameRepository;
     this.priceRepository = priceRepository;
     this.priceService = priceService;
+    this.purchaseRepository = purchaseRepository;
+    this.licenseRepository = licenseRepository;
   }
 
   @Override
@@ -73,23 +88,54 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     Map<Long, GamePriceKrw> prices = priceRepository.findAllById(appIds).stream()
         .collect(Collectors.toMap(GamePriceKrw::getAppId, Function.identity()));
 
+    // 구매내역을 가져왔으면 실제 결제액으로, 아니면 현재 한국 정가로 추정한다
+    List<PurchaseTransaction> history = purchaseRepository.findAllWithItemsByUserId(userId);
+    PurchaseAggregator.Result purchases = PurchaseAggregator.aggregate(history, listPrices(history, prices));
+    boolean hasHistory = !purchases.transactions().isEmpty() || purchases.unconvertedCount() > 0;
+
+    // 라이선스 페이지를 가져왔으면 게임별로 가장 먼저 계정에 추가된 라이선스(획득일·방법)
+    Map<Long, GameLicense> firstLicense = new HashMap<>();
+    licenseRepository.findMatchedByUserId(userId).forEach(license -> firstLicense.putIfAbsent(license.getAppId(), license));
+
     List<SpendingGameResponse> result = owned.stream()
         .map(libraryGame -> toResponse(libraryGame, games.get(libraryGame.getAppId()),
-            prices.get(libraryGame.getAppId())))
+            prices.get(libraryGame.getAppId()), hasHistory, purchases.byGame().get(libraryGame.getAppId()),
+            firstLicense.get(libraryGame.getAppId())))
         .toList();
-    return new SpendingAnalysisResponse(LocalDate.now(), PRICE_BASIS, result);
+    // 보유하지 않은 게임(환불·선물 등)에 쓴 돈도 실제 지출이므로 나눌 수 없는 지출에 더한다
+    int notOwnedKrw = purchases.byGame().entrySet().stream()
+        .filter(entry -> !appIds.contains(entry.getKey()))
+        .mapToInt(entry -> entry.getValue().paidKrw() - entry.getValue().refundKrw())
+        .sum();
+    List<SpendingAnalysisResponse.PurchaseView> views = purchases.transactions().stream()
+        .map(v -> new SpendingAnalysisResponse.PurchaseView(v.purchasedAt(), v.type(), v.amountKrw(),
+            v.appId() != null && appIds.contains(v.appId()) ? v.appId() : null, v.items(), v.savedKrw()))
+        .toList();
+    return new SpendingAnalysisResponse(LocalDate.now(), hasHistory ? HISTORY_BASIS : LIST_PRICE_BASIS, result,
+        hasHistory, purchases.unallocatedKrw() + notOwnedKrw, purchases.savedKrw(), purchases.unconvertedCount(),
+        purchases.unmatchedItemCount(), views);
   }
 
-  private SpendingGameResponse toResponse(LibraryGame owned, Game game, GamePriceKrw price) {
+  private SpendingGameResponse toResponse(LibraryGame owned, Game game, GamePriceKrw price, boolean hasHistory,
+                                          PurchaseAggregator.GameSpend spend, GameLicense license) {
     List<String> genres = splitGenres(game == null ? null : game.getGenre());
+    boolean priced = price != null && GamePriceKrw.PRICED.equals(price.getStatus());
+    boolean free = price != null && GamePriceKrw.FREE.equals(price.getStatus());
     Integer amount;
     String amountSource;
-    if (price != null && GamePriceKrw.PRICED.equals(price.getStatus())) {
-      amount = price.getInitialKrw();
-      amountSource = "ESTIMATED";
-    } else if ((price != null && GamePriceKrw.FREE.equals(price.getStatus())) || isFree(game, price)) {
+    if (spend != null) {
+      amount = spend.paidKrw();
+      amountSource = "CONFIRMED";
+    } else if (free) {
       amount = 0;
       amountSource = "FREE";
+    } else if (hasHistory) {
+      // 구매내역은 있는데 이 게임은 결제 기록이 없다: 선물·키 등록·무료 배포 등으로 얻은 게임
+      amount = null;
+      amountSource = "NO_RECORD";
+    } else if (priced) {
+      amount = price.getInitialKrw();
+      amountSource = "ESTIMATED";
     } else {
       amount = null;
       amountSource = "UNKNOWN";
@@ -106,22 +152,34 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
         price == null ? null : price.getDiscountPercent(),
         toHours(owned.getPlaytimeForever()),
         toHours(owned.getPlaytime2Weeks()),
-        owned.getLastPlayedAt());
+        owned.getLastPlayedAt(),
+        priced ? price.getInitialKrw() : null,
+        spend == null ? 0 : spend.refundKrw(),
+        spend == null ? null : spend.firstPurchasedAt(),
+        spend == null ? 0 : spend.dlcCount(),
+        spend == null ? 0 : spend.savedKrw(),
+        spend != null && spend.bundleCount() > 0,
+        license == null ? null : license.getAcquiredAt(),
+        license == null ? null : license.getMethod());
   }
 
-  // FREE로 확인되지 않았더라도 원화 가격 정보가 없고 CSV 달러 가격이 0이면 무료 게임으로 본다 (예: Dota 2)
-  private boolean isFree(Game game, GamePriceKrw price) {
-    if (game == null || game.getPriceInfo() == null) {
-      return false;
-    }
-    if (price != null && !GamePriceKrw.NO_PRICE.equals(price.getStatus())) {
-      return false;
-    }
-    try {
-      return Double.parseDouble(game.getPriceInfo()) == 0.0;
-    } catch (NumberFormatException e) {
-      return false;
-    }
+  // 여러 게임이 섞인 번들을 나눌 비율로 쓸 현재 한국 정가 (보유하지 않은 게임도 포함해 한 번에 조회)
+  private Map<Long, Integer> listPrices(List<PurchaseTransaction> history, Map<Long, GamePriceKrw> ownedPrices) {
+    Map<Long, Integer> result = new HashMap<>();
+    List<Long> others = new ArrayList<>();
+    history.stream().flatMap(tx -> tx.getItems().stream()).map(PurchaseItem::targetAppId).filter(Objects::nonNull)
+        .distinct().forEach(appId -> {
+          GamePriceKrw price = ownedPrices.get(appId);
+          if (price == null) {
+            others.add(appId);
+          } else if (GamePriceKrw.PRICED.equals(price.getStatus())) {
+            result.put(appId, price.getInitialKrw());
+          }
+        });
+    priceRepository.findAllById(others).stream()
+        .filter(price -> GamePriceKrw.PRICED.equals(price.getStatus()))
+        .forEach(price -> result.put(price.getAppId(), price.getInitialKrw()));
+    return result;
   }
 
   private List<String> splitGenres(String genre) {
@@ -143,8 +201,9 @@ public class SpendingAnalysisServiceImpl implements SpendingAnalysisService {
     return rank < 0 ? GENRE_PRIORITY.size() : rank;
   }
 
-  // 스팀 플레이 시간은 분 단위라 시간 단위(소수 첫째 자리)로 바꾼다
+  // 스팀 플레이 시간은 분 단위라 시간 단위로 바꾼다. 반올림은 화면에서 표시할 때만 한다
+  // (여기서 0.1시간 단위로 반올림하면 3분 플레이도 6분으로 계산돼 시간당 비용이 크게 틀어진다)
   private double toHours(Integer minutes) {
-    return minutes == null ? 0 : Math.round(minutes / 6.0) / 10.0;
+    return minutes == null ? 0 : minutes / 60.0;
   }
 }

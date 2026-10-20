@@ -41,8 +41,12 @@ app:
   ai:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-flash-latest}
-    worldcup-model: ${GEMINI_WORLDCUP_MODEL:gemini-3.5-flash-lite}
-    manager-model: ${GEMINI_MANAGER_MODEL:gemini-3.5-flash-lite}
+    pc:
+      model: ${GEMINI_PC_MODEL:gemini-3.5-flash-lite}
+      provider: ${PC_AI_PROVIDER:auto}
+      groq-api-key: ${GROQ_API_KEY:}
+      groq-model: ${GROQ_PC_MODEL:qwen/qwen3.8-27b}
+      groq-min-interval-seconds: ${GROQ_PC_MIN_INTERVAL_SECONDS:0}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
@@ -52,6 +56,11 @@ app:
     #(선택, 개발용) games 전체의 원화 가격 미리 받기. 보유 게임 가격은 소비 분석 조회 때 자동으로 채워지므로 기본 false
     prices:
       enabled: ${SEED_PRICES_ENABLED:false}
+  #스팀 featured/featuredcategories 캐시를 매일 다시 받는 시각 (기본: 매일 새벽 4시 10분, KST)
+  featured:
+    sync-cron: ${FEATURED_SYNC_CRON:0 10 4 * * *}
+    #서버 기동 시에도 바로 한 번 받아 둘지 여부 (개발 환경에서 새벽 스케줄까지 기다리지 않고 바로 확인하고 싶을 때)
+    sync-on-startup: ${FEATURED_SYNC_ON_STARTUP:true}
 
 board:
   images:
