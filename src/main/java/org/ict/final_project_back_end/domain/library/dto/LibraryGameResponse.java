@@ -12,7 +12,6 @@ public record LibraryGameResponse(
     LocalDateTime lastPlayedAt,
     String iconUrl
 ) {
-
   public static LibraryGameResponse from(LibraryGame game) {
     return new LibraryGameResponse(
         game.getAppId(),

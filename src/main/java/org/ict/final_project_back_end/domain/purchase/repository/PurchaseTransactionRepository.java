@@ -18,8 +18,6 @@ public interface PurchaseTransactionRepository extends JpaRepository<PurchaseTra
   @Query("SELECT DISTINCT t FROM PurchaseTransaction t LEFT JOIN FETCH t.items WHERE t.user.id = :userId ORDER BY t.purchasedAt DESC, t.id DESC")
   List<PurchaseTransaction> findAllWithItemsByUserId(@Param("userId") Long userId);
 
-  boolean existsByUserId(Long userId);
-
   // 다시 가져오기(초기화)와 회원 탈퇴용. 상품을 먼저 지우고 거래를 지운다 (호출하는 쪽에서 트랜잭션 필요)
   @Modifying
   @Query("DELETE FROM PurchaseItem i WHERE i.transaction.id IN (SELECT t.id FROM PurchaseTransaction t WHERE t.user.id = :userId)")
