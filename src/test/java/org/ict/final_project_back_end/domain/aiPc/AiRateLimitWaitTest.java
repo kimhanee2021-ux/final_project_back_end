@@ -13,12 +13,14 @@ class AiRateLimitWaitTest {
     AiRateLimit limit = new AiRateLimit();
     limit.begin(1L);
     AtomicLong waited = new AtomicLong();
-    Thread second = new Thread(() -> {
-      long start = System.currentTimeMillis();
-      limit.begin(1L);
-      waited.set(System.currentTimeMillis() - start);
-      limit.end(1L);
-    });
+    Thread second =
+        new Thread(
+            () -> {
+              long start = System.currentTimeMillis();
+              limit.begin(1L);
+              waited.set(System.currentTimeMillis() - start);
+              limit.end(1L);
+            });
     second.start();
     Thread.sleep(300);
     limit.end(1L);
@@ -33,8 +35,10 @@ class AiRateLimitWaitTest {
       limit.begin(2L);
       limit.end(2L);
     }
-    var failure = org.junit.jupiter.api.Assertions.assertThrows(
-        org.ict.final_project_back_end.domain.aiCommon.exception.AiException.class, () -> limit.begin(2L));
+    var failure =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            org.ict.final_project_back_end.domain.aiCommon.exception.AiException.class,
+            () -> limit.begin(2L));
     assertEquals(429, failure.getStatus().value());
   }
 }
