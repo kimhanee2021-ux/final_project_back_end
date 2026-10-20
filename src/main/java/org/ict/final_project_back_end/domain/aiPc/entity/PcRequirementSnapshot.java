@@ -7,8 +7,8 @@ public class PcRequirementSnapshot {
  @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
  private long appId;
  @Column(length=200,nullable=false) private String name;
- @Column(length=16000,nullable=false) private String minimumText;
- @Column(length=16000,nullable=false) private String recommendedText;
+ @Column(columnDefinition="MEDIUMTEXT",nullable=false) private String minimumText;
+ @Column(columnDefinition="MEDIUMTEXT",nullable=false) private String recommendedText;
  private boolean windowsSupported;
  @Column(length=50,nullable=false) private String checkedAt;
  @Column(length=300) private String sourceUrl;
