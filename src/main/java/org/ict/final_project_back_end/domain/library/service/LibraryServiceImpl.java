@@ -133,7 +133,7 @@ public class LibraryServiceImpl implements LibraryService {
     } catch (RestClientException e) {
       // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않고,
       // 원인을 알 수 있게 스팀이 돌려준 HTTP 상태와 예외 종류만 로그로 남긴다.
-      int status = e instanceof RestClientResponseException response ? response.getStatusCode().value() : -1;
+      int status = e instanceof RestClientResponseException failed ? failed.getStatusCode().value() : -1;
       log.warn("스팀 보유 게임 조회 실패: steamStatus={}, cause={}", status, e.getClass().getSimpleName());
       throw new SteamApiException();
     }
