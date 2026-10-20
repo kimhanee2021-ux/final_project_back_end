@@ -73,4 +73,45 @@ class GamePriceKrwServiceTest {
 
     assertEquals(List.of(2L, 3L), targets);
   }
+
+  private static GamePriceKrw noPrice(long appId, Boolean freeChecked) {
+    return GamePriceKrw.builder().appId(appId).status(GamePriceKrw.NO_PRICE).freeChecked(freeChecked).fetchedAt(NOW).build();
+  }
+
+  @Test
+  void onlyUncheckedNoPriceGamesNeedAFreeCheck() {
+    GamePriceKrw unchecked = noPrice(578080, null);       // 시드로 들어온 PUBG: 아직 확인 전
+    GamePriceKrw checkedPaid = noPrice(261570, true);     // Ori: 확인했더니 무료 아님
+    GamePriceKrw priced = cachedAt(413150, NOW);
+
+    assertEquals(List.of(578080L),
+        GamePriceKrwService.selectFreeCheckTargets(List.of(unchecked, checkedPaid, priced), 20).stream()
+            .map(GamePriceKrw::getAppId).toList());
+  }
+
+  @Test
+  void freeCheckMarksFreeGamesAsZeroWonAndRemembersPaidOnes() {
+    GamePriceKrw pubg = noPrice(578080, null);
+    GamePriceKrw ori = noPrice(261570, null);
+
+    pubg.applyFreeCheck(true);
+    ori.applyFreeCheck(false);
+
+    assertEquals(GamePriceKrw.FREE, pubg.getStatus());
+    assertEquals(0, pubg.getInitialKrw());
+    assertEquals(GamePriceKrw.NO_PRICE, ori.getStatus());
+    assertFalse(ori.needsFreeCheck());
+  }
+
+  @Test
+  void dailyRefreshKeepsAnEarlierFreeCheck() {
+    GamePriceKrw previousFree = noPrice(578080, null);
+    previousFree.applyFreeCheck(true);
+    GamePriceKrw fresh = noPrice(578080, null); // 묶음 조회는 무료 여부를 모른다
+
+    GamePriceKrw merged = GamePriceKrwService.carryOverFreeCheck(fresh, previousFree);
+
+    assertEquals(GamePriceKrw.FREE, merged.getStatus());
+    assertFalse(merged.needsFreeCheck());
+  }
 }

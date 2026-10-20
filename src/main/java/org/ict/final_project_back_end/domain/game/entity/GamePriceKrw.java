@@ -50,4 +50,24 @@ public class GamePriceKrw {
 
   @Column(name = "fetched_at", nullable = false)
   private LocalDateTime fetchedAt;
+
+  // NO_PRICE인 게임에 대해 무료 여부(is_free)까지 확인했는지. null/false면 아직 확인 전이다.
+  // (12만 건 시드나 가격 갱신은 묶음 조회라 is_free를 모르므로, 보유 게임 조회 때 따로 확인한다)
+  @Column(name = "free_checked")
+  private Boolean freeChecked;
+
+  public boolean needsFreeCheck() {
+    return NO_PRICE.equals(status) && !Boolean.TRUE.equals(freeChecked);
+  }
+
+  // 무료 여부 확인 결과를 반영한다. 무료면 FREE(0원), 아니면 NO_PRICE로 두되 다시 확인하지 않도록 표시한다.
+  public void applyFreeCheck(boolean free) {
+    this.freeChecked = true;
+    if (free) {
+      this.status = FREE;
+      this.initialKrw = 0;
+      this.finalKrw = 0;
+      this.discountPercent = 0;
+    }
+  }
 }
