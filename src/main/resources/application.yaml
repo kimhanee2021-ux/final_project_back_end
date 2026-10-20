@@ -52,6 +52,11 @@ app:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_COACH_MODEL:gemini-3.5-flash-lite}
     base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+  #스팀 featured/featuredcategories 캐시를 매일 다시 받는 시각 (기본: 매일 새벽 4시 10분, KST)
+  featured:
+    sync-cron: ${FEATURED_SYNC_CRON:0 10 4 * * *}
+    #서버 기동 시에도 바로 한 번 받아 둘지 여부 (개발 환경에서 새벽 스케줄까지 기다리지 않고 바로 확인하고 싶을 때)
+    sync-on-startup: ${FEATURED_SYNC_ON_STARTUP:true}
 
 board:
   images:
