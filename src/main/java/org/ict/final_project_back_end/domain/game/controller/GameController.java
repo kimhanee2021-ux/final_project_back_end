@@ -1,11 +1,13 @@
 package org.ict.final_project_back_end.domain.game.controller;
 
+import org.ict.final_project_back_end.domain.game.dto.GameDetailResponse;
 import org.ict.final_project_back_end.domain.game.dto.GamePageResponse;
 import org.ict.final_project_back_end.domain.game.service.GameService;
 import org.ict.final_project_back_end.global.swagger.GameApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,5 +38,11 @@ public class GameController implements GameApiDocs {
       @RequestParam(name = "size", defaultValue = "20") int size,
       @RequestParam(name = "name") String name) {
     return ResponseEntity.ok(service.searchGames(page, size, name));
+  }
+
+  @Override
+  @GetMapping("/{appId}")
+  public ResponseEntity<GameDetailResponse> detail(@PathVariable("appId") Long appId) {
+    return ResponseEntity.ok(service.getGame(appId));
   }
 }

@@ -5,7 +5,9 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
@@ -33,8 +35,8 @@ public class GameCsvSeedRunner implements ApplicationRunner {
 
   private static final String INSERT_SQL = """
       INSERT IGNORE INTO games
-        (app_id, name, genre, price_info, discount_percent, review_count, positive_rate, thumbnail_url, description, last_synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        (app_id, name, genre, positive_rate, thumbnail_url, original_price, tags, categories, recommendations, short_description, about_the_game, last_synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       """;
 
   private final JdbcTemplate jdbcTemplate;
@@ -60,12 +62,20 @@ public class GameCsvSeedRunner implements ApplicationRunner {
     try (CSVReader reader = new CSVReader(
         new InputStreamReader(new ClassPathResource(CSV_PATH).getInputStream(), StandardCharsets.UTF_8))) {
 
-      reader.readNext(); // 헤더 라인 스킵
+      // 컬럼 순서가 바뀌어도 깨지지 않도록 헤더 이름으로 인덱스를 찾는다.
+      Map<String, Integer> col = new HashMap<>();
+      String[] header = reader.readNext();
+      for (int i = 0; i < header.length; i++) {
+        col.put(header[i].replace("﻿", "").trim(), i);
+      }
 
       List<Object[]> batch = new ArrayList<>(chunkSize);
       String[] row;
       while ((row = reader.readNext()) != null) {
-        batch.add(toParams(row));
+        if (row.length != header.length) {
+          continue; // 깨진 행은 건너뜀
+        }
+        batch.add(toParams(row, col));
         if (batch.size() >= chunkSize) {
           total += flush(batch);
         }
@@ -86,17 +96,19 @@ public class GameCsvSeedRunner implements ApplicationRunner {
     return size;
   }
 
-  private Object[] toParams(String[] row) {
+  private Object[] toParams(String[] row, Map<String, Integer> col) {
     return new Object[]{
-        Long.parseLong(row[0].trim()),
-        row[1],
-        nullIfBlank(row[2]),
-        nullIfBlank(row[3]),
-        parseIntOrNull(row[4]),
-        parseIntOrNull(row[5]),
-        parseBigDecimalOrNull(row[6]),
-        nullIfBlank(row[7]),
-        nullIfBlank(row[8]),
+        Long.parseLong(row[col.get("AppID")].trim()),
+        row[col.get("Name")],
+        nullIfBlank(row[col.get("Genres")]),
+        parseBigDecimalOrNull(row[col.get("Positive ratio")]),
+        nullIfBlank(row[col.get("Header image")]),
+        parseBigDecimalOrNull(row[col.get("Original price")]),
+        nullIfBlank(row[col.get("Tags")]),
+        nullIfBlank(row[col.get("Categories")]),
+        parseIntOrNull(row[col.get("Recommendations")]),
+        nullIfBlank(row[col.get("Short description")]),
+        nullIfBlank(row[col.get("About the game")]),
     };
   }
 
