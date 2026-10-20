@@ -44,6 +44,7 @@ app:
     worldcup-model: ${GEMINI_WORLDCUP_MODEL:gemini-3.5-flash-lite}
     manager-model: ${GEMINI_MANAGER_MODEL:gemini-3.5-flash-lite}
     pc:
+      model: ${GEMINI_PC_MODEL:gemini-3.5-flash-lite}
       provider: ${PC_AI_PROVIDER:auto}
       groq-api-key: ${GROQ_API_KEY:}
       groq-model: ${GROQ_PC_MODEL:qwen/qwen3.8-27b}

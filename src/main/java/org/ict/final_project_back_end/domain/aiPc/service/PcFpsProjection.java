@@ -7,7 +7,7 @@ public final class PcFpsProjection {
  private PcFpsProjection(){}
  public static PcFps.Projection project(PcSpecs pc,List<PcFps.Sample> samples){
   if(pc.ramGB()==null)return null;
-  var eligible=samples.stream().filter(s->key(s.cpu()).equals(key(pc.cpuModel()))&&key(s.gpu()).equals(key(pc.gpuModel()))&&s.ramGB()!=null&&pc.ramGB()>=s.ramGB()&&s.averageFps()>0&&Double.isFinite(s.averageFps())).sorted(Comparator.comparingInt(s->s.preset().toLowerCase(Locale.ROOT).contains(" high ")?0:1)).toList();
+  var eligible=samples.stream().filter(s->!Boolean.FALSE.equals(s.projectionEligible())).filter(s->key(s.cpu()).equals(key(pc.cpuModel()))&&key(s.gpu()).equals(key(pc.gpuModel()))&&s.ramGB()!=null&&pc.ramGB()>=s.ramGB()&&s.averageFps()>0&&Double.isFinite(s.averageFps())).sorted(Comparator.comparingInt(s->s.preset().toLowerCase(Locale.ROOT).contains(" high ")?0:1)).toList();
   if(eligible.isEmpty())return null;
   var anchor=eligible.getFirst();
   // 같은 옵션만 묶고 동일 측정 PC의 중복 게시값은 한 번만 사용한다.

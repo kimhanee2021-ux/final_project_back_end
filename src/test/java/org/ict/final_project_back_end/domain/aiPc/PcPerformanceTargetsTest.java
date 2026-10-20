@@ -10,4 +10,11 @@ class PcPerformanceTargetsTest {
  @Test void missingGpuOverridesAiGrade()throws Exception{assertEquals("UNKNOWN_GPU",PcPerformanceTargets.parse(answer("A","ESTIMATE","추정"),"fhd",pc("")).reasonCode());}
  @Test void unknownKeepsSpecificReason()throws Exception{var r=PcPerformanceTargets.parse(answer("UNKNOWN","RESOLUTION_GAP","해상도 비교자료 부족"),"fhd",pc("UHD770"));assertEquals("추정 어려움",r.label());assertEquals("RESOLUTION_GAP",r.reasonCode());}
  @Test void missingResolutionAndInventedNumericFpsDoNotBecomeGrades()throws Exception{assertEquals("UNKNOWN",PcPerformanceTargets.parse(answer("A","ESTIMATE","144FPS 보장"),"fhd",pc("UHD770")).grade());assertEquals("UNKNOWN",PcPerformanceTargets.parse(answer("A","ESTIMATE","추정"),"uhd",pc("UHD770")).grade());}
+ @Test void flatResolutionArrayIsAcceptedWithoutBorrowingAnotherResolution()throws Exception{var data=new ObjectMapper().readTree("{\"targets\":[{\"resolution\":\"fhd\",\"grade\":\"C\",\"reasonCode\":\"ESTIMATE\",\"reason\":\"낮음 옵션에서 비교 추정\"}]}");assertEquals("C",PcPerformanceTargets.parse(data,"fhd",pc("UHD770")).grade());assertEquals("UNKNOWN",PcPerformanceTargets.parse(data,"uhd",pc("UHD770")).grade());}
+ @Test void mixedGpuNamesAreUnknownEvenWhenAiReturnsA()throws Exception{assertEquals("UNKNOWN_GPU",PcPerformanceTargets.parse(answer("A","ESTIMATE","추정"),"fhd",pc("RTX 5060 Laptop GPU, AMD Radeon 780M Graphics")).reasonCode());}
+ @Test void higherResolutionCannotImproveWithoutChangedSettings()throws Exception{var data=new ObjectMapper().readTree("{\"targets\":{\"fhd\":{\"grade\":\"C\",\"reasonCode\":\"ESTIMATE\",\"reason\":\"낮음 옵션\"},\"qhd\":{\"grade\":\"A\",\"reasonCode\":\"ESTIMATE\",\"reason\":\"낮음 옵션\"}}}");assertEquals("CONFLICTING_DATA",PcPerformanceTargets.parse(data,"qhd",pc("UHD770")).reasonCode());}
+ @Test void knownGpuDoesNotBecomeUnreadableJustBecausePerformanceIsUnknown()throws Exception{
+  var target=PcPerformanceTargets.parse(answer("UNKNOWN","UNKNOWN_GPU","내장 그래픽 성능 미확인"),"fhd",pc("Intel UHD Graphics 770"));
+  assertEquals("UNKNOWN",target.grade());assertEquals("NO_COMPARISON",target.reasonCode());assertTrue(target.reason().contains("GPU 모델은 확인"));
+ }
 }

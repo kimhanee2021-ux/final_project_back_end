@@ -24,7 +24,9 @@ public class PcRequirementsClient {
    var result=new java.util.ArrayList<SearchGame>();for(var node:json.readTree(res.body()).path("items")){long id=node.path("id").asLong();String name=node.path("name").asText();if(id>0&&name.length()<=200&&!name.isBlank())result.add(new SearchGame(id,name));if(result.size()==10)break;}return java.util.List.copyOf(result);
   }catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiException(SERVICE_UNAVAILABLE,"검색이 중단됐어요.");}catch(Exception e){throw new AiException(SERVICE_UNAVAILABLE,"Steam 게임 검색을 불러오지 못했어요.");}
  }
- public synchronized PcGameRequirements get(long id){
+ private final Object[] requirementLocks=java.util.stream.IntStream.range(0,64).mapToObj(i->new Object()).toArray();
+ public PcGameRequirements get(long id){synchronized(requirementLocks[Math.floorMod(id,requirementLocks.length)]){return load(id);}}
+ private PcGameRequirements load(long id){
   if(id<1||id>999999999)throw new AiException(BAD_REQUEST,"올바른 게임을 선택해주세요.");
   var old=repository.findFirstByAppIdOrderByIdDesc(id);
   if(old.isPresent()&&Instant.parse(old.get().data().checkedAt()).isAfter(Instant.now().minusSeconds(86400)))return old.get().data();

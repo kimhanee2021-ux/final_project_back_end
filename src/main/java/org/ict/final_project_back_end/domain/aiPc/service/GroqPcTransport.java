@@ -28,7 +28,7 @@ public class GroqPcTransport {
   if(!configured()||!model.matches("[a-zA-Z0-9/._-]{1,100}"))throw new AiException(SERVICE_UNAVAILABLE,"Groq 연결 설정을 확인해주세요.");
   boolean locked=false;
   try{
-   if(!requestLock.tryLock(15,java.util.concurrent.TimeUnit.SECONDS))throw new AiException(SERVICE_UNAVAILABLE,"AI 분석 대기 중이에요. 잠시 후 다시 시도해주세요.");locked=true;
+   if(!requestLock.tryLock(3,java.util.concurrent.TimeUnit.SECONDS))throw new AiException(SERVICE_UNAVAILABLE,"AI 분석 대기 중이에요. 잠시 후 다시 시도해주세요.");locked=true;
    var content=new ArrayList<Map<String,Object>>();
    for(var part:parts){
     if(part.containsKey("text"))content.add(Map.of("type","text","text",part.get("text")));
@@ -43,7 +43,8 @@ public class GroqPcTransport {
    if(model.startsWith("qwen/"))body.put("reasoning_effort","none");
    // 잔여토큰과 문자수 기반의 부정확한 추정치로 정상 요청을 차단하지 않는다.
    // 실제 공급자 429는 아래에서 그대로 전달하며 자동 재시도하지 않는다.
-   var request=HttpRequest.newBuilder(URI.create(base+"/openai/v1/chat/completions")).timeout(Duration.ofSeconds(90)).header("Content-Type","application/json").header("Authorization","Bearer "+key).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
+   var request=HttpRequest.newBuilder(URI.create(base+"/openai/v1/chat/completions")).timeout(Duration.ofSeconds(hasImage?30:45)).header("Content-Type","application/json").header("Authorization","Bearer "+key).POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
+   log.info("PC Groq request model={}, maxOutputTokens={}",model,outputLimit);
    var response=http.send(request,HttpResponse.BodyHandlers.ofByteArray());
    nextRequestAt=0; // 고정 간격 대신 공급자가 반환한 실제 잔여 토큰만 확인한다.
    tokensRemaining=response.headers().firstValueAsLong("x-ratelimit-remaining-tokens").orElse(Long.MAX_VALUE);
@@ -56,7 +57,7 @@ public class GroqPcTransport {
    }
    if(response.statusCode()==401||response.statusCode()==403)throw new AiException(SERVICE_UNAVAILABLE,"Groq 연결 권한을 확인해주세요.");
    if(response.statusCode()!=200||response.body().length>131072)throw invalid();
-   var choice=json.readTree(response.body()).path("choices").path(0);
+   var envelope=json.readTree(response.body());var usage=envelope.path("usage");log.info("PC AI usage provider=Groq model={} inputTokens={} outputTokens={} totalTokens={}",model,usage.path("prompt_tokens").asLong(-1),usage.path("completion_tokens").asLong(-1),usage.path("total_tokens").asLong(-1));var choice=envelope.path("choices").path(0);
    if(!"stop".equals(choice.path("finish_reason").asText())||!choice.path("message").path("refusal").asText("").isBlank()){log.warn("PC Groq response rejected: stopped={}, refusal={}","stop".equals(choice.path("finish_reason").asText()),!choice.path("message").path("refusal").asText("").isBlank());throw invalid();}
    var answer=json.readTree(choice.path("message").path("content").asText());if(answer==null||!answer.isObject())throw invalid();return answer;
   }catch(AiException e){throw e;}catch(HttpTimeoutException e){throw new AiException(GATEWAY_TIMEOUT,"AI 분석이 지연되고 있어요. 잠시 후 다시 시도해주세요.");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new AiException(SERVICE_UNAVAILABLE,"AI 분석이 중단됐어요.");}catch(Exception e){log.warn("PC Groq transport/JSON failure: {}",e.getClass().getSimpleName());throw invalid();}finally{if(locked)requestLock.unlock();}
