@@ -10,9 +10,9 @@ import static org.springframework.http.HttpStatus.*;
 @Component
 public class GeminiPcClient extends GeminiSupport {
  private final GroqPcTransport groq;private final String provider;
- public GeminiPcClient(String key,String model,String base){super(key,model,base,model);this.groq=null;this.provider="gemini";}
+ public GeminiPcClient(String key,String model,String base){super(key,model,base);this.groq=null;this.provider="gemini";}
  @org.springframework.beans.factory.annotation.Autowired
- public GeminiPcClient(@Value("${app.ai.api-key:}")String key,@Value("${app.ai.pc.model:gemini-3.5-flash-lite}")String model,@Value("${app.ai.base-url:https://generativelanguage.googleapis.com}")String base,GroqPcTransport groq,@Value("${app.ai.pc.provider:auto}")String provider){super(key,model,base,model);this.groq=groq;this.provider=provider;}
+ public GeminiPcClient(@Value("${app.ai.api-key:}")String key,@Value("${app.ai.pc.model:gemini-3.5-flash-lite}")String model,@Value("${app.ai.base-url:https://generativelanguage.googleapis.com}")String base,GroqPcTransport groq,@Value("${app.ai.pc.provider:auto}")String provider){super(key,model,base);this.groq=groq;this.provider=provider;}
  private final ThreadLocal<String> lastProvider=new ThreadLocal<>();
  public String actualProvider(){return Objects.toString(lastProvider.get(),"");}
  public String provider(){

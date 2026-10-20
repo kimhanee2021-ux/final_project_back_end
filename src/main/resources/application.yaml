@@ -41,8 +41,6 @@ app:
   ai:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-flash-latest}
-    worldcup-model: ${GEMINI_WORLDCUP_MODEL:gemini-3.5-flash-lite}
-    manager-model: ${GEMINI_MANAGER_MODEL:gemini-3.5-flash-lite}
     pc:
       model: ${GEMINI_PC_MODEL:gemini-3.5-flash-lite}
       provider: ${PC_AI_PROVIDER:auto}

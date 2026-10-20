@@ -3,7 +3,7 @@ import java.io.ByteArrayInputStream;
 import javax.imageio.ImageIO;
 import org.ict.final_project_back_end.domain.aiCommon.exception.AiException;
 import static org.springframework.http.HttpStatus.*;
-// 기존 스크린샷과 PC 사진에서 같은 이미지 검증을 사용한다.
+// PC 사진 분석에서 쓰는 이미지 검증.
 public final class AiImageValidator {
  private AiImageValidator(){}
   // Check dimensions without expanding compressed pixels into a large raster.
