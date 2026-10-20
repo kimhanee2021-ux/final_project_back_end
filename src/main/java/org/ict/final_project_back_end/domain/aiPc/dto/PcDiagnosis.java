@@ -4,7 +4,7 @@ import jakarta.validation.Valid;import jakarta.validation.constraints.*;
 public final class PcDiagnosis {
  private PcDiagnosis(){}
  public record Extraction(PcSpecs specs,List<String> warnings,String aiProvider){public Extraction(PcSpecs specs,List<String> warnings){this(specs,warnings,"");}}
- public record Request(@NotNull @Valid PcSpecs specs,@Min(1) @Max(999999999) long appId,Boolean includeAi){}
+ public record Request(@NotNull @Valid PcSpecs specs,@Min(1) @Max(999999999) long appId){}
  public record BatchRequest(@NotNull @Valid PcSpecs specs,@NotEmpty @Size(max=5) List<@NotNull @Min(1) @Max(999999999) Long> appIds){}
  public record OverviewRequest(@NotNull @Valid PcSpecs specs,@NotEmpty @Size(max=2000) List<@NotNull @Min(1) @Max(999999999) Long> appIds){}
  public record Overview(String overallGrade,int gameCount,List<String> overallExplanation,List<PcComponentAdvice> componentAdvice,String aiProvider){}

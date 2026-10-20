@@ -72,12 +72,6 @@ class PcApiTest {
    &&candidates.stream().anyMatch(candidate->"UNVERIFIED".equals(candidate.status())&&candidate.priceKrw()==null)
    &&candidates.stream().allMatch(candidate->candidate.part().productCode()==123?candidate.equals(offer):"UNVERIFIED".equals(candidate.status())&&candidate.priceKrw()==null)));
  }
- @Test void officialOnlyComparisonNeverCallsGemini()throws Exception{
-  when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/","2026-10-19T00:00:00Z"));
-  String input=body(1).replaceFirst("\\{","{\"includeAi\":false,");
-  for(int n=0;n<7;n++)mvc.perform(post("/api/ai/pc/assess").header("Authorization",token).contentType("application/json").content(input)).andExpect(status().isOk()).andExpect(jsonPath("$.explanationStatus").value("NOT_REQUESTED")).andExpect(jsonPath("$.checks").isNotEmpty());
-  verifyNoInteractions(gemini);
- }
  private String body(int id){return "{\"appId\":"+id+",\"specs\":{\"deviceType\":\"DESKTOP\",\"cpuModel\":\"CPU 123\",\"gpuModel\":\"GPU 123\",\"ramGB\":32,\"storageFreeGB\":100}}";}
  @Test void delayedAiKeepsOfficialComparisonAndClearlyMarksMissingExplanation()throws Exception{
   when(requirements.get(1)).thenReturn(new PcGameRequirements(1,"공식 게임","Memory: 8 GB Storage: 5 GB","",true,"https://store.steampowered.com/app/1/?cc=kr","2026-10-19T00:00:00Z"));
