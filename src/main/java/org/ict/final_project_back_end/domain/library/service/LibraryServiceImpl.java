@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -35,6 +38,8 @@ import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_API
 
 @Service
 public class LibraryServiceImpl implements LibraryService {
+
+  private static final Logger log = LoggerFactory.getLogger(LibraryServiceImpl.class);
 
   // 스팀 게임 아이콘 경로 형식: .../apps/{appid}/{img_icon_url}.jpg
   private static final String STEAM_ICON_URL_FORMAT = "https://media.steampowered.com/steamcommunity/public/images/apps/%d/%s.jpg";
@@ -126,7 +131,10 @@ public class LibraryServiceImpl implements LibraryService {
           .retrieve()
           .body(SteamOwnedGamesResponse.class);
     } catch (RestClientException e) {
-      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않는다
+      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않고,
+      // 원인을 알 수 있게 스팀이 돌려준 HTTP 상태와 예외 종류만 로그로 남긴다.
+      int status = e instanceof RestClientResponseException response ? response.getStatusCode().value() : -1;
+      log.warn("스팀 보유 게임 조회 실패: steamStatus={}, cause={}", status, e.getClass().getSimpleName());
       throw new SteamApiException();
     }
 
