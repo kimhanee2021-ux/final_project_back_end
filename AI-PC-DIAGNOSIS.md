@@ -215,3 +215,4 @@ Groq최신실패원인 분당7000/사용3272/신규4992합계초과. 일일소�
 - 사용하지 않던 `domain/pcSpec` 엔티티(`GameRequirementCache`, `UserPcSpec`)를 제거했다. 게임 요구 사양은 `aiPc`의 `pc_requirement_snapshots`가 담당한다.
 - AI 요청 제한기(`AiRateLimit`)는 같은 사용자의 이전 분석이 끝나지 않았으면 최대 90초 기다린 뒤 처리한다(분당 6건 제한은 유지).
 - 요구 사양 저장 컬럼은 `MEDIUMTEXT`로 만들어 서버를 켤 때 테이블이 자동 생성되게 했다.
+- 화면·API 없이 엔티티만 남아 있던 도메인(beta, chat, companion, news, report, review)과 analysis의 구매계획·이탈·감정, board의 UserCommunityStat 엔티티를 제거했다. 해당 테이블 23개(pcSpec 2개 포함)는 모두 비어 있었고 `docs/db/drop_unused_tables.sql`로 정리한다.
