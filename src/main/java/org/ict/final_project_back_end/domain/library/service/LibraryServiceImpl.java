@@ -14,14 +14,11 @@ import org.ict.final_project_back_end.global.exception.PrivateSteamLibraryExcept
 import org.ict.final_project_back_end.global.exception.SteamApiException;
 import org.ict.final_project_back_end.global.exception.SteamNotLinkedException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -38,8 +35,6 @@ import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_API
 
 @Service
 public class LibraryServiceImpl implements LibraryService {
-
-  private static final Logger log = LoggerFactory.getLogger(LibraryServiceImpl.class);
 
   // 스팀 게임 아이콘 경로 형식: .../apps/{appid}/{img_icon_url}.jpg
   private static final String STEAM_ICON_URL_FORMAT = "https://media.steampowered.com/steamcommunity/public/images/apps/%d/%s.jpg";
@@ -131,12 +126,7 @@ public class LibraryServiceImpl implements LibraryService {
           .retrieve()
           .body(SteamOwnedGamesResponse.class);
     } catch (RestClientException e) {
-      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않고, 원인 파악용으로 상태코드/예외 타입만 남긴다
-      if (e instanceof RestClientResponseException responseException) {
-        log.warn("스팀 GetOwnedGames 호출 실패: status={}", responseException.getStatusCode());
-      } else {
-        log.warn("스팀 GetOwnedGames 호출 실패: {}", e.getClass().getSimpleName());
-      }
+      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않는다
       throw new SteamApiException();
     }
 

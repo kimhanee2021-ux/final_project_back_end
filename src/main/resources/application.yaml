@@ -38,6 +38,15 @@ steam:
 
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
+  ai:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-flash-latest}
+    pc:
+      model: ${GEMINI_PC_MODEL:gemini-3.5-flash-lite}
+      provider: ${PC_AI_PROVIDER:auto}
+      groq-api-key: ${GROQ_API_KEY:}
+      groq-model: ${GROQ_PC_MODEL:qwen/qwen3.8-27b}
+      groq-min-interval-seconds: ${GROQ_PC_MIN_INTERVAL_SECONDS:0}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
@@ -48,6 +57,11 @@ app:
     #(선택, 개발용) games 전체의 원화 가격 미리 받기. 보유 게임 가격은 소비 분석 조회 때 자동으로 채워지므로 기본 false
     prices:
       enabled: ${SEED_PRICES_ENABLED:false}
+  #AI 게임 소비 코치(Gemini). 키는 .env의 GEMINI_API_KEY만 사용 (AI 팀원 기능과 같은 키, 설정 이름은 따로)
+  coach:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_COACH_MODEL:gemini-3.5-flash-lite}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
   #스팀 featured/featuredcategories 캐시를 매일 다시 받는 시각 (기본: 매일 새벽 4시 10분, KST)
   featured:
     sync-cron: ${FEATURED_SYNC_CRON:0 10 4 * * *}
