@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface WeeklyRankEntryRepository extends JpaRepository<WeeklyRankEntry, Long> {
 
-  List<WeeklyRankEntry> findTop5ByChart_ChartIdOrderByGameRankAsc(Long chartId);
+  List<WeeklyRankEntry> findTop10ByChart_ChartIdOrderByGameRankAsc(Long chartId);
 }

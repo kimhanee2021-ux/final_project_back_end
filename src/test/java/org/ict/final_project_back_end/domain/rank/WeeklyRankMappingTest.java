@@ -24,11 +24,11 @@ class WeeklyRankMappingTest {
       sql.execute("""
           CREATE TABLE rank_weekly_charts (
             chart_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-            country_code CHAR(2),
-            week_start DATE,
-            week_end_exclusive DATE,
-            source_type VARCHAR(30),
-            verification_status VARCHAR(20),
+            country_code CHAR(2) NOT NULL,
+            week_start DATE NOT NULL,
+            week_end_exclusive DATE NOT NULL CHECK (week_end_exclusive > week_start),
+            source_type VARCHAR(30) NOT NULL,
+            verification_status VARCHAR(20) NOT NULL,
             source_url VARCHAR(500),
             fetched_at DATETIME(6),
             UNIQUE (country_code, week_start)
@@ -39,11 +39,13 @@ class WeeklyRankMappingTest {
             rank_id BIGINT AUTO_INCREMENT PRIMARY KEY,
             chart_id BIGINT NOT NULL REFERENCES rank_weekly_charts(chart_id),
             app_id BIGINT NOT NULL,
-            game_name_snapshot VARCHAR(500),
+            game_name_snapshot VARCHAR(500) NOT NULL,
             steam_rank INT NOT NULL,
-            game_rank TINYINT NOT NULL CHECK (game_rank BETWEEN 1 AND 5),
+            game_rank TINYINT NOT NULL CHECK (game_rank BETWEEN 1 AND 10),
             last_week_rank INT,
             consecutive_weeks INT,
+            image_url_snapshot TEXT,
+            rank_change_kind VARCHAR(16),
             UNIQUE (chart_id, app_id),
             UNIQUE (chart_id, game_rank)
           )
@@ -63,8 +65,10 @@ class WeeklyRankMappingTest {
             .weekEndExclusive(LocalDate.of(2026, 10, 13)).sourceType("TEST_FIXTURE")
             .verificationStatus("UNVERIFIED").sourceUrl("https://example.invalid/" + "x".repeat(476))
             .fetchedAt(fetchedAt).build();
-        var entry = WeeklyRankEntry.builder().chart(chart).appId(9000000001L).gameRank(5).steamRank(30)
-            .gameNameSnapshot("가".repeat(500)).build();
+        var entry = WeeklyRankEntry.builder().chart(chart).appId(9000000001L).gameRank(10).steamRank(30)
+            .gameNameSnapshot("가".repeat(500))
+            .imageUrlSnapshot("https://example.invalid/" + "x".repeat(600))
+            .rankChangeKind("RETURNING").build();
         factory.inTransaction(session -> {
           session.persist(chart);
           session.persist(entry);
@@ -74,9 +78,11 @@ class WeeklyRankMappingTest {
         factory.inTransaction(session -> {
           var loaded = session.find(WeeklyRankEntry.class, entry.getRankId());
           assertEquals(9000000001L, loaded.getAppId());
-          assertEquals(5, loaded.getGameRank());
+          assertEquals(10, loaded.getGameRank());
           assertEquals(30, loaded.getSteamRank());
           assertEquals("가".repeat(500), loaded.getGameNameSnapshot());
+          assertEquals(entry.getImageUrlSnapshot(), loaded.getImageUrlSnapshot());
+          assertEquals("RETURNING", loaded.getRankChangeKind());
           assertNull(loaded.getLastWeekRank());
           assertNull(loaded.getConsecutiveWeeks());
           assertEquals("KR", loaded.getChart().getCountryCode());
@@ -84,22 +90,31 @@ class WeeklyRankMappingTest {
           assertEquals(chart.getSourceUrl(), loaded.getChart().getSourceUrl());
         });
 
+        var nullableEntry = WeeklyRankEntry.builder().chart(chart).appId(9000000002L)
+            .gameRank(6).steamRank(6).gameNameSnapshot("No optional metadata").build();
+        factory.inTransaction(session -> session.persist(nullableEntry));
+        factory.inTransaction(session -> {
+          var loaded = session.find(WeeklyRankEntry.class, nullableEntry.getRankId());
+          assertNull(loaded.getImageUrlSnapshot());
+          assertNull(loaded.getRankChangeKind());
+        });
+
         long chartId = chart.getChartId();
         assertThrows(SQLException.class, () -> sql.execute(
-            "INSERT INTO rank_weekly_charts (country_code, week_start) VALUES ('KR', DATE '2026-10-06')"));
+            "INSERT INTO rank_weekly_charts (country_code, week_start, week_end_exclusive, source_type, verification_status) VALUES ('KR', DATE '2026-10-06', DATE '2026-10-13', 'TEST_FIXTURE', 'UNVERIFIED')"));
         assertThrows(SQLException.class, () -> sql.execute(
-            "INSERT INTO rank_weekly_entries (chart_id, app_id, steam_rank, game_rank) VALUES ("
-                + chartId + ", 9000000001, 1, 1)"));
+            "INSERT INTO rank_weekly_entries (chart_id, app_id, game_name_snapshot, steam_rank, game_rank) VALUES ("
+                + chartId + ", 9000000001, 'duplicate app', 1, 1)"));
         assertThrows(SQLException.class, () -> sql.execute(
-            "INSERT INTO rank_weekly_entries (chart_id, app_id, steam_rank, game_rank) VALUES ("
-                + chartId + ", 2, 1, 5)"));
-        for (int invalidRank : new int[] {0, 6}) {
+            "INSERT INTO rank_weekly_entries (chart_id, app_id, game_name_snapshot, steam_rank, game_rank) VALUES ("
+                + chartId + ", 2, 'duplicate rank', 1, 10)"));
+        for (int invalidRank : new int[] {0, 11}) {
           assertThrows(SQLException.class, () -> sql.execute(
-              "INSERT INTO rank_weekly_entries (chart_id, app_id, steam_rank, game_rank) VALUES ("
-                  + chartId + ", 2, 1, " + invalidRank + ")"));
+              "INSERT INTO rank_weekly_entries (chart_id, app_id, game_name_snapshot, steam_rank, game_rank) VALUES ("
+                  + chartId + ", 2, 'invalid rank', 1, " + invalidRank + ")"));
         }
         assertThrows(SQLException.class, () -> sql.execute(
-            "INSERT INTO rank_weekly_entries (chart_id, app_id, steam_rank, game_rank) VALUES (-1, 2, 1, 1)"));
+            "INSERT INTO rank_weekly_entries (chart_id, app_id, game_name_snapshot, steam_rank, game_rank) VALUES (-1, 2, 'invalid chart', 1, 1)"));
       }
     }
   }

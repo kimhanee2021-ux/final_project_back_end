@@ -38,6 +38,13 @@ steam:
 
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
+  rank:
+    # 두 설정이 모두 true일 때만 정기 수집을 등록한다. 기본값은 비활성이다.
+    sync-enabled: ${RANK_SYNC_ENABLED:false}
+    schedule-enabled: ${RANK_SCHEDULE_ENABLED:false}
+    # 매일 오전 6시(한국 시간)에 최신 확정 주간 TOP 10을 확인한다.
+    # 실패하면 다음 예약 시각에 재시도하며 기존 주차 데이터는 유지한다.
+    sync-cron: ${RANK_SYNC_CRON:0 0 6 * * *}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:

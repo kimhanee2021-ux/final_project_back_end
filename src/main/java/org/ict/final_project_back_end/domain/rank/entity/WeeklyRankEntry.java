@@ -19,13 +19,13 @@ import org.hibernate.annotations.Check;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-// Steam 원본 순위와 서비스에서 노출할 게임 순위(1~5)를 별도로 보관한다.
+// 원본 상품 TOP 10의 Steam 순위와 저장된 표시 순위를 보관한다.
 @Entity
 @Table(name = "rank_weekly_entries", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"chart_id", "app_id"}),
     @UniqueConstraint(columnNames = {"chart_id", "game_rank"})
 })
-@Check(constraints = "game_rank BETWEEN 1 AND 5")
+@Check(constraints = "game_rank BETWEEN 1 AND 10")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -45,7 +45,7 @@ public class WeeklyRankEntry {
   @Column(name = "app_id", nullable = false)
   private Long appId;
 
-  @Column(name = "game_name_snapshot", length = 500)
+  @Column(name = "game_name_snapshot", length = 500, nullable = false)
   private String gameNameSnapshot;
 
   @Column(name = "steam_rank", nullable = false)
@@ -60,4 +60,10 @@ public class WeeklyRankEntry {
 
   @Column(name = "consecutive_weeks")
   private Integer consecutiveWeeks;
+
+  @Column(name = "image_url_snapshot", columnDefinition = "TEXT")
+  private String imageUrlSnapshot;
+
+  @Column(name = "rank_change_kind", length = 16)
+  private String rankChangeKind;
 }

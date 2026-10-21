@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Check;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "rank_weekly_charts",
     uniqueConstraints = @UniqueConstraint(columnNames = {"country_code", "week_start"}))
+@Check(constraints = "week_end_exclusive > week_start")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -34,19 +36,19 @@ public class WeeklyRankChart {
   private Long chartId;
 
   @JdbcTypeCode(SqlTypes.CHAR)
-  @Column(name = "country_code", length = 2, columnDefinition = "CHAR(2)")
+  @Column(name = "country_code", length = 2, columnDefinition = "CHAR(2)", nullable = false)
   private String countryCode;
 
-  @Column(name = "week_start")
+  @Column(name = "week_start", nullable = false)
   private LocalDate weekStart;
 
-  @Column(name = "week_end_exclusive")
+  @Column(name = "week_end_exclusive", nullable = false)
   private LocalDate weekEndExclusive;
 
-  @Column(name = "source_type", length = 30)
+  @Column(name = "source_type", length = 30, nullable = false)
   private String sourceType;
 
-  @Column(name = "verification_status", length = 20)
+  @Column(name = "verification_status", length = 20, nullable = false)
   private String verificationStatus;
 
   @Column(name = "source_url", length = 500)

@@ -46,12 +46,12 @@ public class RankQueryService {
     String countryCode = country.trim().toUpperCase(Locale.ROOT);
     WeeklyRankChart chart = chartRepository.findByCountryCodeAndWeekStart(countryCode, week)
         .orElseThrow(WeeklyRankNotFoundException::new);
-    List<WeeklyRankEntry> entries = entryRepository.findTop5ByChart_ChartIdOrderByGameRankAsc(chart.getChartId());
+    List<WeeklyRankEntry> entries = entryRepository.findTop10ByChart_ChartIdOrderByGameRankAsc(chart.getChartId());
     if (entries.isEmpty()) {
       return WeeklyRankResponse.from(chart, List.of());
     }
 
-    // 최대 5개의 메타데이터를 한 번에 조회하며, 누락된 games 행 때문에 순위를 버리지 않는다.
+    // 최대 10개의 메타데이터를 한 번에 조회하며, 누락된 games 행 때문에 순위를 버리지 않는다.
     Map<Long, Game> games = gameRepository.findAllById(
             entries.stream().map(WeeklyRankEntry::getAppId).toList()).stream()
         .collect(Collectors.toMap(Game::getAppId, Function.identity()));

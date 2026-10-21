@@ -40,7 +40,7 @@ class RankQueryServiceTest {
   @Test
   void normalizesCountryAndKeepsStoredRanksAndMissingMetadata() {
     when(charts.findByCountryCodeAndWeekStart("KR", WEEK)).thenReturn(Optional.of(chart));
-    when(entries.findTop5ByChart_ChartIdOrderByGameRankAsc(10L)).thenReturn(List.of(
+    when(entries.findTop10ByChart_ChartIdOrderByGameRankAsc(10L)).thenReturn(List.of(
         entry(101L, 1, 3, "첫 스냅샷"), entry(102L, 2, 7, "누락 게임 스냅샷"),
         entry(103L, 4, 11, "빈 이름 스냅샷")));
     when(games.findAllById(List.of(101L, 102L, 103L))).thenReturn(List.of(
@@ -70,7 +70,7 @@ class RankQueryServiceTest {
     assertNull(response.games().get(1).consecutiveWeeks());
     assertEquals("빈 이름 스냅샷", response.games().get(2).name());
     verify(charts).findByCountryCodeAndWeekStart("KR", WEEK);
-    verify(entries).findTop5ByChart_ChartIdOrderByGameRankAsc(10L);
+    verify(entries).findTop10ByChart_ChartIdOrderByGameRankAsc(10L);
     verify(games).findAllById(List.of(101L, 102L, 103L));
     verifyNoMoreInteractions(charts, entries, games);
   }
@@ -87,7 +87,7 @@ class RankQueryServiceTest {
   @Test
   void savedChartWithoutEntriesReturnsEmptyListWithoutFillingFivePlaces() {
     when(charts.findByCountryCodeAndWeekStart("KR", WEEK)).thenReturn(Optional.of(chart));
-    when(entries.findTop5ByChart_ChartIdOrderByGameRankAsc(10L)).thenReturn(List.of());
+    when(entries.findTop10ByChart_ChartIdOrderByGameRankAsc(10L)).thenReturn(List.of());
     assertTrue(service.getWeeklyRank("KR", WEEK).games().isEmpty());
     verifyNoInteractions(games);
   }

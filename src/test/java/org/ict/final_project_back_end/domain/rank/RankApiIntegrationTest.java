@@ -43,9 +43,9 @@ class RankApiIntegrationTest {
   @Autowired private JdbcTemplate jdbc;
 
   @Test
-  void returnsTopFiveInStoredGameRankOrderEvenWithoutGameMetadata() throws Exception {
+  void returnsTopTenInStoredGameRankOrderEvenWithoutGameMetadata() throws Exception {
     WeeklyRankChart chart = chart("KR", WEEK);
-    for (int rank : new int[] {5, 3, 1, 4, 2}) {
+    for (int rank : new int[] {10, 5, 8, 3, 1, 6, 9, 4, 7, 2}) {
       entry(chart, 9000000000L + rank, rank, rank * 3);
     }
     games.save(Game.builder().appId(9000000001L).name("메타데이터 이름")
@@ -65,7 +65,7 @@ class RankApiIntegrationTest {
         .andExpect(jsonPath("$.sourceType").value("TEST_FIXTURE"))
         .andExpect(jsonPath("$.verificationStatus").value("UNVERIFIED"))
         .andExpect(jsonPath("$.sourceUrl").value("https://example.invalid/rank-test"))
-        .andExpect(jsonPath("$.games.length()").value(5))
+        .andExpect(jsonPath("$.games.length()").value(10))
         .andExpect(jsonPath("$.games[0].appId").value(9000000001L))
         .andExpect(jsonPath("$.games[0].name").value("메타데이터 이름"))
         .andExpect(jsonPath("$.games[0].genre").value("RPG"))
@@ -81,10 +81,47 @@ class RankApiIntegrationTest {
         .andExpect(jsonPath("$.games[4].gameRank").value(5))
         .andExpect(jsonPath("$.games[4].steamRank").value(15))
         .andExpect(jsonPath("$.games[4].lastWeekRank").value(20))
-        .andExpect(jsonPath("$.games[4].consecutiveWeeks").value(2));
+        .andExpect(jsonPath("$.games[4].consecutiveWeeks").value(2))
+        .andExpect(jsonPath("$.games[9].gameRank").value(10))
+        .andExpect(jsonPath("$.games[9].steamRank").value(30))
+        .andExpect(jsonPath("$.games[9].imageUrlSnapshot").value("https://example.invalid/snapshot-10.jpg"))
+        .andExpect(jsonPath("$.games[9].rankChangeKind").value("DOWN"));
     assertEquals(gameCount, games.count());
     assertFalse(games.existsById(9000000002L));
-    assertEquals(7, entries.count());
+    assertEquals(12, entries.count());
+  }
+
+  @Test
+  @WithAnonymousUser
+  void existingScreenReadsTenProductsAndOptionsWithoutAuthentication() throws Exception {
+    var chart = charts.save(WeeklyRankChart.builder().countryCode("KR").weekStart(WEEK)
+        .weekEndExclusive(WEEK.plusDays(7)).sourceType("STEAM_WEEKLY")
+        .verificationStatus("VERIFIED").sourceUrl("https://example.invalid/chart")
+        .fetchedAt(LocalDateTime.of(2026, 10, 13, 12, 0)).build());
+    for (int rank = 10; rank >= 1; rank--) entry(chart, 8000000000L + rank, rank, rank);
+    flushAndClear();
+    mvc.perform(get("/api/ranks/weekly/products").param("country", "KR").param("week", "2026-10-06"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.country").value("KR"))
+        .andExpect(jsonPath("$.week").value("2026-10-06"))
+        .andExpect(jsonPath("$.status").value("VERIFIED"))
+        .andExpect(jsonPath("$.sourceUrl").value("https://example.invalid/chart"))
+        .andExpect(jsonPath("$.verifiedAt").value("2026-10-13T12:00Z"))
+        .andExpect(jsonPath("$.entries.length()").value(10))
+        .andExpect(jsonPath("$.entries[0].sourceRank").value(1))
+        .andExpect(jsonPath("$.entries[9].sourceRank").value(10))
+        .andExpect(jsonPath("$.entries[9].appId").value(8000000010L))
+        .andExpect(jsonPath("$.entries[9].name").value("테스트 스냅샷 10"))
+        .andExpect(jsonPath("$.entries[9].imageUrl").value("https://example.invalid/snapshot-10.jpg"))
+        .andExpect(jsonPath("$.entries[9].changeKind").value("DOWN"))
+        .andExpect(jsonPath("$.entries[9].previousRank").value(20))
+        .andExpect(jsonPath("$.entries[9].consecutiveWeeks").value(2));
+    mvc.perform(get("/api/ranks/weekly/options"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].country").value("KR"))
+        .andExpect(jsonPath("$[0].week").value("2026-10-06"))
+        .andExpect(jsonPath("$[0].status").value("VERIFIED"));
+    assertEquals(10, entries.count());
   }
 
   @Test
@@ -168,7 +205,9 @@ class RankApiIntegrationTest {
 
   private void entry(WeeklyRankChart chart, long appId, int gameRank, int steamRank) {
     entries.save(WeeklyRankEntry.builder().chart(chart).appId(appId).gameRank(gameRank).steamRank(steamRank)
-        .gameNameSnapshot("테스트 스냅샷 " + gameRank).lastWeekRank(20).consecutiveWeeks(2).build());
+        .gameNameSnapshot("테스트 스냅샷 " + gameRank).lastWeekRank(20).consecutiveWeeks(2)
+        .imageUrlSnapshot("https://example.invalid/snapshot-" + gameRank + ".jpg")
+        .rankChangeKind("DOWN").build());
   }
 
   private void flushAndClear() {
