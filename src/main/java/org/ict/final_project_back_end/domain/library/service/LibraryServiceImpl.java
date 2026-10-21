@@ -19,15 +19,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,9 +41,15 @@ import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_API
 @Service
 public class LibraryServiceImpl implements LibraryService {
 
+  private static final Logger log = LoggerFactory.getLogger(LibraryServiceImpl.class);
+
   // 스팀 게임 아이콘 경로 형식: .../apps/{appid}/{img_icon_url}.jpg
   private static final String STEAM_ICON_URL_FORMAT = "https://media.steampowered.com/steamcommunity/public/images/apps/%d/%s.jpg";
 
+  // 같은 사용자가 이 시간 안에 다시 동기화하면 스팀을 다시 부르지 않고 저장된 목록을 돌려준다(스팀 요청 제한 429 예방).
+  private static final Duration SYNC_COOLDOWN = Duration.ofSeconds(60);
+
+  private final Map<Long, Instant> lastSyncedAt = new ConcurrentHashMap<>();
   private final UserRepository userRepository;
   private final LibraryGameRepository libraryGameRepository;
   private final GamePriceKrwService gamePriceKrwService;
@@ -66,7 +77,25 @@ public class LibraryServiceImpl implements LibraryService {
       throw new SteamNotLinkedException();
     }
 
-    List<SteamOwnedGamesResponse.Game> steamGames = fetchOwnedGames(user.getSteamId());
+    if (syncedRecently(userId)) {
+      List<LibraryGameResponse> stored = storedLibrary(userId);
+      if (!stored.isEmpty()) {
+        return stored;
+      }
+    }
+
+    List<SteamOwnedGamesResponse.Game> steamGames;
+    try {
+      steamGames = fetchOwnedGames(user.getSteamId());
+    } catch (SteamApiException e) {
+      // 스팀이 일시적으로 실패(요청 제한 429, 장애 등)해도 이전에 저장한 목록이 있으면 그것을 보여준다.
+      List<LibraryGameResponse> stored = storedLibrary(userId);
+      if (stored.isEmpty()) {
+        throw e;
+      }
+      log.warn("스팀 호출에 실패해 저장된 보유 게임 {}개를 대신 돌려줍니다", stored.size());
+      return stored;
+    }
 
     // appId 기준으로 기존 행을 찾아 갱신하고, 없는 게임만 새로 만든다 (중복 저장 방지)
     Map<Long, LibraryGame> existingByAppId = libraryGameRepository.findAllByUserId(userId).stream()
@@ -76,7 +105,17 @@ public class LibraryServiceImpl implements LibraryService {
         .map(steamGame -> upsert(user, existingByAppId.get(steamGame.appid()), steamGame))
         .toList();
     libraryGameRepository.saveAll(toSave);
+    lastSyncedAt.put(userId, Instant.now());
 
+    return storedLibrary(userId);
+  }
+
+  private boolean syncedRecently(Long userId) {
+    Instant last = lastSyncedAt.get(userId);
+    return last != null && Duration.between(last, Instant.now()).compareTo(SYNC_COOLDOWN) < 0;
+  }
+
+  private List<LibraryGameResponse> storedLibrary(Long userId) {
     return libraryGameRepository.findAllByUserIdOrderByNameAsc(userId).stream()
         .map(LibraryGameResponse::from)
         .toList();
@@ -126,7 +165,10 @@ public class LibraryServiceImpl implements LibraryService {
           .retrieve()
           .body(SteamOwnedGamesResponse.class);
     } catch (RestClientException e) {
-      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않는다
+      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않고,
+      // 원인을 알 수 있게 스팀이 돌려준 HTTP 상태와 예외 종류만 로그로 남긴다.
+      int status = e instanceof RestClientResponseException failed ? failed.getStatusCode().value() : -1;
+      log.warn("스팀 보유 게임 조회 실패: steamStatus={}, cause={}", status, e.getClass().getSimpleName());
       throw new SteamApiException();
     }
 
