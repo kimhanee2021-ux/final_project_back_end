@@ -1,8 +1,7 @@
 package org.ict.final_project_back_end.domain.library.service;
 
-import org.ict.final_project_back_end.domain.game.entity.GamePriceKrw;
-import org.ict.final_project_back_end.domain.game.repository.GamePriceKrwRepository;
-import org.ict.final_project_back_end.domain.game.service.GamePriceKrwService;
+import org.ict.final_project_back_end.domain.game.entity.Game;
+import org.ict.final_project_back_end.domain.game.repository.GameRepository;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGamePriceResponse;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGameResponse;
 import org.ict.final_project_back_end.domain.library.dto.SteamOwnedGamesResponse;
@@ -41,20 +40,17 @@ public class LibraryServiceImpl implements LibraryService {
 
   private final UserRepository userRepository;
   private final LibraryGameRepository libraryGameRepository;
-  private final GamePriceKrwService gamePriceKrwService;
-  private final GamePriceKrwRepository gamePriceKrwRepository;
+  private final GameRepository gameRepository;
   private final RestClient restClient = RestClient.create();
   private final String steamApiKey;
 
   public LibraryServiceImpl(UserRepository userRepository,
                             LibraryGameRepository libraryGameRepository,
-                            GamePriceKrwService gamePriceKrwService,
-                            GamePriceKrwRepository gamePriceKrwRepository,
+                            GameRepository gameRepository,
                             @Value("${steam.api-key}") String steamApiKey) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
-    this.gamePriceKrwService = gamePriceKrwService;
-    this.gamePriceKrwRepository = gamePriceKrwRepository;
+    this.gameRepository = gameRepository;
     this.steamApiKey = steamApiKey;
   }
 
@@ -140,9 +136,8 @@ public class LibraryServiceImpl implements LibraryService {
     return value == null ? 0 : value;
   }
 
-  // 가격 캐시는 소비 분석과 같은 game_prices_krw 하나를 쓴다. GamePriceKrwService가 가격이 없거나 하루 지난
-  // 게임만 100개씩 묶어 스팀에 묻고 저장하므로, 여기서는 그 결과를 응답 형식으로 바꾸기만 한다.
-  // 스팀 호출이 섞여 있어 트랜잭션을 걸지 않는다(외부 호출 동안 DB 연결을 붙잡지 않도록).
+  // 가격은 games 테이블의 원화 정가(original_price)를 그대로 쓴다. 외부 호출이 없어 트랜잭션은 걸지 않는다.
+  // games에 없는 게임이나 가격이 비어 있는 게임은 가격 필드를 null로 내려준다.
   @Override
   public List<LibraryGamePriceResponse> getLibraryGamePrices(Long userId) {
     List<LibraryGame> libraryGames = libraryGameRepository.findAllByUserIdOrderByNameAsc(userId);
@@ -151,24 +146,20 @@ public class LibraryServiceImpl implements LibraryService {
     }
 
     List<Long> appIds = libraryGames.stream().map(LibraryGame::getAppId).toList();
-    gamePriceKrwService.ensurePrices(appIds);
-    Map<Long, GamePriceKrw> pricesByAppId = gamePriceKrwRepository.findAllById(appIds).stream()
-        .collect(Collectors.toMap(GamePriceKrw::getAppId, Function.identity()));
+    Map<Long, Game> gamesByAppId = gameRepository.findAllById(appIds).stream()
+        .collect(Collectors.toMap(Game::getAppId, Function.identity()));
 
     return libraryGames.stream()
-        .map(game -> toPriceResponse(game, pricesByAppId.get(game.getAppId())))
+        .map(game -> toPriceResponse(game, gamesByAppId.get(game.getAppId())))
         .toList();
   }
 
-  // 무료(FREE)면 isFree=true에 0원, 가격이 있으면(PRICED) 그 가격, 그 외(가격 없음/미판매/조회 실패)는 null
-  private LibraryGamePriceResponse toPriceResponse(LibraryGame game, GamePriceKrw price) {
-    if (price != null && GamePriceKrw.FREE.equals(price.getStatus())) {
-      return new LibraryGamePriceResponse(game.getAppId(), game.getName(), true, 0, 0, 0);
+  // 정가 0원이면 isFree=true, 정가가 있으면 그 가격(현재가=정가, 할인율 0), 그 외(없음/미등록)는 null
+  private LibraryGamePriceResponse toPriceResponse(LibraryGame library, Game game) {
+    if (game == null || game.getOriginalPrice() == null) {
+      return new LibraryGamePriceResponse(library.getAppId(), library.getName(), null, null, null, null);
     }
-    if (price != null && GamePriceKrw.PRICED.equals(price.getStatus())) {
-      return new LibraryGamePriceResponse(game.getAppId(), game.getName(), false,
-          price.getInitialKrw(), price.getFinalKrw(), price.getDiscountPercent());
-    }
-    return new LibraryGamePriceResponse(game.getAppId(), game.getName(), null, null, null, null);
+    int price = game.getOriginalPrice().intValue();
+    return new LibraryGamePriceResponse(library.getAppId(), library.getName(), price == 0, price, price, 0);
   }
 }

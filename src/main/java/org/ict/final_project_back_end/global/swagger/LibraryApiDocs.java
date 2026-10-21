@@ -41,9 +41,8 @@ public interface LibraryApiDocs {
   @Operation(
       summary = "라이브러리 게임 가격 조회",
       description = "로그인한 사용자가 보유한 라이브러리 게임들의 원화(KRW) 가격을 조회한다. "
-          + "games 테이블의 가격은 달러 기준 원본 텍스트라 사용하지 않고, 소비 분석과 같은 원화 가격 캐시(game_prices_krw)를 쓴다. "
-          + "가격이 없거나 1일이 지난 게임만 스팀 스토어 API(appdetails, cc=kr)에 100개씩 묶어 다시 조회한다. "
-          + "무료 게임은 isFree=true에 가격 0, 가격을 알 수 없는 게임(조회 실패/한국 미판매 등)은 가격 필드가 null로 내려온다."
+          + "games 테이블의 원화 정가(original_price)를 그대로 쓴다. 할인 정보가 없어 현재가는 정가와 같고 할인율은 0이다. "
+          + "정가가 0원인 게임은 isFree=true에 가격 0, games에 없거나 가격이 비어 있는 게임은 가격 필드가 null로 내려온다."
   )
   @SecurityRequirement(name = "bearerAuth")
   @ApiResponses({

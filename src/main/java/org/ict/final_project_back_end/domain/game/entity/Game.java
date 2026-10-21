@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 // 스팀 게임 카탈로그(1일 1회 캐싱). PK는 스팀 appId를 그대로 쓴다.
@@ -55,12 +56,6 @@ public class Game {
 
   private Integer recommendations;
 
-  @Column(name = "min_spec_raw_text", columnDefinition = "TEXT")
-  private String minSpecRawText;
-
-  @Column(name = "rec_spec_raw_text", columnDefinition = "TEXT")
-  private String recSpecRawText;
-
   @Column(name = "thumbnail_url", length = 500)
   private String thumbnailUrl;
 
@@ -69,6 +64,9 @@ public class Game {
 
   @Column(name = "about_the_game", columnDefinition = "TEXT")
   private String aboutTheGame;
+
+  @Column(name = "release_date")
+  private LocalDate releaseDate;
 
   @Column(name = "last_synced_at")
   private LocalDateTime lastSyncedAt;

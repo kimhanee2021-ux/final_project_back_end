@@ -8,6 +8,8 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,8 +49,8 @@ public class GameCsvSeedRunner implements ApplicationRunner {
 
   private static final String INSERT_SQL = """
       INSERT IGNORE INTO games
-        (app_id, name, genre, positive_rate, thumbnail_url, original_price, tags, categories, recommendations, short_description, about_the_game, last_synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        (app_id, name, genre, positive_rate, thumbnail_url, original_price, tags, categories, recommendations, short_description, about_the_game, release_date, last_synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       """;
 
   private final JdbcTemplate jdbcTemplate;
@@ -157,13 +159,25 @@ public class GameCsvSeedRunner implements ApplicationRunner {
         nullIfBlank(row[col.get("Genres")]),
         parseBigDecimalOrNull(row[col.get("Positive ratio")]),
         nullIfBlank(row[col.get("Header image")]),
-        parseBigDecimalOrNull(row[col.get("Original price")]),
+        parseBigDecimalOrNull(row[col.get("Original price KRW")]),
         nullIfBlank(row[col.get("Tags")]),
         nullIfBlank(row[col.get("Categories")]),
         parseIntOrNull(row[col.get("Recommendations")]),
         nullIfBlank(row[col.get("Short description")]),
         nullIfBlank(row[col.get("About the game")]),
+        parseDateOrNull(row[col.get("Release date")]),
     };
+  }
+
+  private LocalDate parseDateOrNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    try {
+      return LocalDate.parse(value.trim());
+    } catch (DateTimeParseException e) {
+      return null; // 형식이 다른 값은 결측으로 처리
+    }
   }
 
   private String nullIfBlank(String value) {
