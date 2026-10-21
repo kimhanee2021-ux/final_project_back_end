@@ -94,6 +94,16 @@ public class UserServiceImpl implements UserService {
     userRepository.delete(user);
   }
 
+  // 연동하지 않은 상태에서 불러도 같은 결과(해제됨)이므로 예외를 던지지 않는다.
+  // 보유 게임(library_games)은 연동한 스팀 계정에서 받아 온 사본이라 함께 지운다. 다시 연동하면 동기화로 채워진다.
+  @Override
+  @Transactional
+  public void unlinkSteam(Long userId) {
+    User user = findUser(userId);
+    libraryGameRepository.deleteByUserId(userId);
+    user.setSteamId(null);
+  }
+
   private User findUser(Long userId) {
     return userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
   }
