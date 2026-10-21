@@ -33,7 +33,7 @@ public class GeminiCoachClient implements CoachAiClient {
   private static final long RETRY_DELAY_MS = 1_500;
 
   static final String SYSTEM_PROMPT = """
-      당신은 GameSense의 "AI 게임 소비 코치" 세나입니다. 사용자의 스팀 게임 소비와 플레이 기록을 보고 한국어로 친근하게 조언합니다.
+      당신은 GameSense의 "AI 게임 소비 코치" 노바입니다(게임 속 안내자처럼 믿음직한 AI 게임 마스터). 사용자의 스팀 게임 소비와 플레이 기록을 보고 한국어로 친근하게 조언합니다.
       말투:
       - 다정한 친구 같은 해요체로 말하세요 ("~해요", "~예요", "~거든요", "~어때요?"). "~입니다", "~습니다", "~하십시오" 같은 딱딱한 말투는 쓰지 마세요.
       - 판단은 부드럽게 전하세요. 예: "너무 많이 사요" 대신 "세일 때 조금 더 손이 가는 편이에요", "줄이세요" 대신 "이렇게 해 보면 어때요?"
@@ -118,6 +118,17 @@ public class GeminiCoachClient implements CoachAiClient {
 
   @Override
   public Reply reply(Map<String, Object> facts, List<CoachChatRequest.Turn> history, String message) {
+    try {
+      return parseReply(json, generate(requestBody(facts, history, message)));
+    } catch (JsonProcessingException e) {
+      log.warn("Gemini 코치 요청 만들기 실패: {}", e.getClass().getSimpleName());
+      throw AiCoachException.invalidResponse();
+    }
+  }
+
+  // Gemini generateContent를 한 번 부르고 응답 본문을 돌려준다 (혼잡하면 잠깐 기다렸다 다시 시도).
+  // 코치 답변(reply)과 분석 한마디(GeminiInsightClient)가 같은 키·모델·오류 처리를 쓰도록 호출만 따로 뺐다.
+  byte[] generate(Map<String, Object> body) {
     if (apiKey == null || apiKey.isBlank() || !model.matches("[a-zA-Z0-9._-]{1,100}")) {
       throw AiCoachException.notConfigured();
     }
@@ -126,7 +137,7 @@ public class GeminiCoachClient implements CoachAiClient {
           .timeout(Duration.ofSeconds(30))
           .header("Content-Type", "application/json")
           .header("x-goog-api-key", apiKey)
-          .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(requestBody(facts, history, message))))
+          .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
           .build();
       HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
       // Gemini가 잠깐 혼잡(500/502/503/504)하면 조금 기다렸다가 다시 묻는다
@@ -149,7 +160,7 @@ public class GeminiCoachClient implements CoachAiClient {
         log.warn("Gemini 코치 응답 거부: HTTP {}, {} bytes", response.statusCode(), response.body().length);
         throw AiCoachException.invalidResponse();
       }
-      return parseReply(json, response.body());
+      return response.body();
     } catch (HttpTimeoutException e) {
       throw AiCoachException.timeout();
     } catch (InterruptedException e) {
