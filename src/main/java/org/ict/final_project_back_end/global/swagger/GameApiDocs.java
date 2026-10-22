@@ -11,11 +11,12 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.ict.final_project_back_end.domain.game.dto.GameDetailResponse;
 import org.ict.final_project_back_end.domain.game.dto.GamePageResponse;
 import org.springframework.http.ResponseEntity;
 
 // GameController의 springdoc(OpenAPI) 문서화를 전담하는 인터페이스.
-@Tag(name = "Game", description = "게임 목록/검색 API")
+@Tag(name = "Game", description = "게임 목록/검색/상세 API")
 public interface GameApiDocs {
 
   @Operation(
@@ -52,5 +53,19 @@ public interface GameApiDocs {
       @Min(1) @Max(100) int size,
       @Parameter(description = "제목 검색 키워드(부분 일치, 최대 100자)", required = true, example = "Dragon")
       @NotBlank @Size(max = 100) String name
+  );
+
+  @Operation(
+      summary = "게임 상세 조회",
+      description = "appId로 게임 한 건을 조회한다. 카테고리·태그·소개 글을 포함하며, "
+          + "tags는 2026년 이후 게임에서 null일 수 있다."
+  )
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "조회 성공",
+          content = @Content(schema = @Schema(implementation = GameDetailResponse.class))),
+      @ApiResponse(responseCode = "404", description = "존재하지 않는 게임", content = @Content)
+  })
+  ResponseEntity<GameDetailResponse> detail(
+      @Parameter(description = "스팀 appId", required = true, example = "570") Long appId
   );
 }

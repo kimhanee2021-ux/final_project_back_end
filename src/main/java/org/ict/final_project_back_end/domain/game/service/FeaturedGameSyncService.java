@@ -18,7 +18,7 @@ import java.util.function.ToLongFunction;
 
 // 스팀 홈 추천(/api/featured의 featured_win 섹션)과 카테고리별 목록(/api/featuredcategories)을
 // 매일 한 번 통째로 받아 featured_games / featured_category_games 테이블을 비우고 다시 채우는 스냅샷 캐시.
-// 두 응답 모두 "지금 이 시각의 전체 목록"이라 appId 단위로 합치는 의미가 없어 GamePriceKrwService처럼
+// 두 응답 모두 "지금 이 시각의 전체 목록"이라 appId 단위로 합치는 의미가 없어
 // appId별로 갱신 대상을 고르는 대신, 매번 전체를 교체한다. 스팀 호출이 실패하면 기존 캐시를 그대로 두고
 // 다음 스케줄에 다시 시도한다(예외를 던지지 않음).
 // 저장 전에 성인·노출 콘텐츠로 표시된 게임은 AdultContentFilter로 걸러낸다.
