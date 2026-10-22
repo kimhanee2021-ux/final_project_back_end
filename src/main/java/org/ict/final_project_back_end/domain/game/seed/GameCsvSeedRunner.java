@@ -12,8 +12,10 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -80,6 +82,9 @@ public class GameCsvSeedRunner implements ApplicationRunner {
     AtomicLong inserted = new AtomicLong();
     long parsed = 0;
     long skipped = 0;
+    long duplicated = 0;
+    // 이름이 완전히 같은 행은 CSV에서 먼저 나온 것만 남긴다. 청크로 나누기 전 파싱 스레드 하나에서만 걸러서 writer 스레드 간 경합이 없다.
+    Set<String> seenNames = new HashSet<>();
 
     // 큐가 가득 차면 파싱 스레드(호출자)가 직접 실행해서 자연스럽게 속도를 맞춘다.
     ExecutorService executor = new ThreadPoolExecutor(
@@ -108,6 +113,12 @@ public class GameCsvSeedRunner implements ApplicationRunner {
           skipped++; // 깨진 행은 건너뜀
           continue;
         }
+        String name = row[col.get("Name")];
+        // 대소문자·공백까지 그대로 같은 이름만 중복으로 본다. 이름이 비어 있는 행은 서로 같은 게임이 아니므로 거르지 않는다.
+        if (name != null && !name.isEmpty() && !seenNames.add(name)) {
+          duplicated++;
+          continue;
+        }
         chunk.add(toParams(row, col));
         parsed++;
         if (chunk.size() >= chunkSize) {
@@ -126,8 +137,8 @@ public class GameCsvSeedRunner implements ApplicationRunner {
       executor.shutdown();
     }
 
-    log.info("게임 CSV 시드 완료: 파싱 {}건, 삽입 {}건, 건너뜀 {}건, {}ms",
-        parsed, inserted.get(), skipped, System.currentTimeMillis() - started);
+    log.info("게임 CSV 시드 완료: 파싱 {}건, 삽입 {}건, 이름 중복 제외 {}건, 건너뜀 {}건, {}ms",
+        parsed, inserted.get(), duplicated, skipped, System.currentTimeMillis() - started);
   }
 
   private Future<?> submit(ExecutorService executor, List<Object[]> chunk, AtomicLong inserted) {
