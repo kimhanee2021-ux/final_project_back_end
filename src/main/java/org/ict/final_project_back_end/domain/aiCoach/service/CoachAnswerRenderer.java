@@ -106,10 +106,24 @@ public final class CoachAnswerRenderer {
 
     String asked = question == null ? "" : question.replace(",", "");
     Matcher raw = RAW_NUMBER.matcher(outside);
+    Map<String, String> known = null;
     while (raw.find()) {
       String number = raw.group(1).replace(",", "");
       if (!number.equals("0") && !asked.contains(number) && !RULE_PHRASES.contains(number + raw.group(2))) {
-        problems.add("직접 쓴 숫자: " + raw.group());
+        // AI가 자리표시자 대신 숫자를 직접 썼더라도 facts에 있는 값과 글자까지 똑같으면 옮겨 적다 틀린 게 아니므로 받아 준다
+        // ("63.4시간"처럼). 근거 보기에도 그 칸을 넣는다. 어느 칸과도 다르면(15,500원을 15,400원으로 쓴 경우 등) 지금처럼 실패다.
+        if (known == null) {
+          known = knownValues(facts);
+        }
+        String path = known.get(raw.group(1) + raw.group(2));
+        if (path != null) {
+          Resolved resolved = resolve(facts, path);
+          if (resolved != null && !isLabelField(resolved.field())) {
+            evidence.putIfAbsent(path, evidenceOf(facts, path, resolved, format(resolved.field(), resolved.value())));
+          }
+        } else {
+          problems.add("직접 쓴 숫자: " + raw.group());
+        }
       }
     }
     // "{{x}}원"처럼 단위를 한 번 더 붙인 경우 정리
@@ -159,6 +173,26 @@ public final class CoachAnswerRenderer {
     return repeated ? parent + "." + parts[parts.length - 1] : parent.toString();
   }
 
+  // facts의 모든 숫자 칸을 화면에 나오는 모양("63.4시간", "87,765원")으로 바꿔 그 칸의 경로를 찾을 수 있게 모은다 (같은 모양이 여러 칸이면 먼저 나온 칸)
+  private static Map<String, String> knownValues(Map<String, Object> facts) {
+    Map<String, String> known = new LinkedHashMap<>();
+    collectKnown(facts, "", known);
+    return known;
+  }
+
+  private static void collectKnown(Object node, String path, Map<String, String> known) {
+    if (node instanceof Map<?, ?> map) {
+      map.forEach((key, value) -> collectKnown(value, path.isEmpty() ? String.valueOf(key) : path + "." + key, known));
+    } else if (node instanceof List<?> list) {
+      for (int i = 0; i < list.size(); i++) {
+        collectKnown(list.get(i), path + "." + i, known);
+      }
+    } else if (node instanceof Number) {
+      String field = path.substring(path.lastIndexOf('.') + 1);
+      known.putIfAbsent(format(field, node).replace(" ", ""), path);
+    }
+  }
+
   private record Resolved(String field, Object value) {
   }
 
@@ -169,7 +203,7 @@ public final class CoachAnswerRenderer {
   }
 
   // 받침 유무에 따라 바뀌는 조사 쌍 (받침 있을 때, 없을 때). 긴 것부터 검사한다
-  private static final String[][] PARTICLES = {{"이에요", "예요"}, {"을", "를"}, {"은", "는"}, {"과", "와"}};
+  private static final String[][] PARTICLES = {{"이에요", "예요"}, {"이었", "였"}, {"을", "를"}, {"은", "는"}, {"과", "와"}};
 
   private static boolean isHangul(char c) {
     return c >= 0xAC00 && c <= 0xD7A3;

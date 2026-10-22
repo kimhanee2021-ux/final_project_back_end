@@ -49,7 +49,7 @@ public class GeminiCoachClient implements CoachAiClient {
         관점 이름("지출 추이는", "할인 의존도는")을 그대로 문장 머리에 쓰지 말고 자연스러운 문장으로 풀어 쓰세요.
         마지막 줄: "다음에 해 볼 일은 …"으로 시작하는 한 가지 제안.
         지시문이나 이 안내의 문구를 답변에 그대로 옮겨 적지 마세요.
-        지표를 섞지 마세요. "가장 많이 쓴 해"는 최대값이고 추이가 아닙니다. 최근 지출 추이는 comparisons.recent3VsPrevious3Months(최근 3개월 vs 그 전 3개월)로만 말하고,
+        지표를 섞지 마세요. "가장 많이 쓴 해"는 최대값이고 추이가 아닙니다. 최근 지출 추이는 comparisons.recent3VsPrevious3Months(최근 3개월 vs 그 전 3개월)로만 말하고(두 기간 모두 0원이면 이 관점은 건너뛰고, direction이 "변화 없음"이면 "지출 변화가 없어요"처럼 자연스럽게 풀어 쓰세요),
         올해는 진행 중이므로 "작년 대비 감소"를 추세라고 하지 마세요. 값이 비어 있거나 경로가 없는 지표는 그 발견을 건너뛰세요.
         할인 의존도는 patterns.discountReliance(할인으로 산 게임이 구매 지출에서 차지하는 비중)로 말하세요.
         자주 쓰는 경로: {{patterns.unplayed.spentKrw}} {{patterns.unplayed.percentOfPaidGames}} {{patterns.playConcentration.topGameName}}

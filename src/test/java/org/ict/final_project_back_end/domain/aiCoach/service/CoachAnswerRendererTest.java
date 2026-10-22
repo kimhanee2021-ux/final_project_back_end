@@ -151,6 +151,23 @@ class CoachAnswerRendererTest {
   }
 
   @Test
+  void acceptsADirectlyWrittenNumberOnlyWhenItIsExactlyAFactsValue() {
+    // 실제 502: AI가 {{...playHours}} 대신 "63.4시간"을 직접 씀 -> facts에 있는 값과 똑같으면 받고 근거 보기에도 넣는다
+    CoachAnswerRenderer.Rendered ok = CoachAnswerRenderer.render("Isaac은 154.2시간 플레이했어요.", facts, "");
+    assertTrue(ok.ok(), ok.problems().toString());
+    assertEquals(List.of(new CoachChatResponse.Evidence("Isaac 플레이 시간", "154.2시간", 154.2, "시간", "bestValueGames.*.playHours")), ok.evidence());
+    // 어느 칸과도 다른 숫자는 여전히 실패 (옮겨 적다 틀린 경우)
+    assertEquals(List.of("직접 쓴 숫자: 154.3시간"), CoachAnswerRenderer.render("Isaac은 154.3시간 했어요.", facts, "").problems());
+  }
+
+  @Test
+  void fixesPastTenseCopulaAfterValues() {
+    // 실제 답변: "87,765원였고" -> 받침 있는 값 뒤는 "이었", 없는 값 뒤는 "였"
+    assertEquals("87,765원이었고, 올해는 33%였어요",
+        CoachAnswerRenderer.render("{{spendingByYear.2025.spentKrw}}였고, 올해는 {{discountHabit.discountedUnplayedPercent}}이었어요", facts, "").text());
+  }
+
+  @Test
   void allowsNumbersFromTheQuestionAndRulePhrases() {
     assertTrue(CoachAnswerRenderer.render("30분만 할 수 있다면 짧은 게임이 좋아요. 1시간 이상 한 게임 기준이에요.",
         facts, "30분만 할 건데 뭐 하지?").ok());

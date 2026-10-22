@@ -169,7 +169,7 @@ public final class CoachFactsBuilder {
           "thisYear", thisYear, "lastYear", thisYear - 1,
           "thisYearSpentKrw", now, "lastYearSpentKrw", before,
           "changeKrw", Math.abs(now - before),
-          "direction", now < before ? "감소" : now > before ? "증가" : "같음",
+          "direction", now < before ? "감소" : now > before ? "증가" : "변화 없음",
           "changePercent", before == 0 ? null : Math.round(Math.abs(now - before) * 100.0 / before),
           "note", "올해는 아직 진행 중이라 연간 합계가 아님"));
     }
@@ -182,7 +182,7 @@ public final class CoachFactsBuilder {
       int earlierSum = monthly.subList(monthly.size() - 6, monthly.size() - 3).stream().mapToInt(Integer::intValue).sum();
       result.put("recent3VsPrevious3Months", row("recentSpentKrw", recentSum, "previousSpentKrw", earlierSum,
           "changeKrw", Math.abs(recentSum - earlierSum),
-          "direction", recentSum < earlierSum ? "감소" : recentSum > earlierSum ? "증가" : "같음",
+          "direction", recentSum < earlierSum ? "감소" : recentSum > earlierSum ? "증가" : "변화 없음",
           "changePercent", earlierSum == 0 ? null : Math.round(Math.abs(recentSum - earlierSum) * 100.0 / earlierSum)));
     }
     return result;
