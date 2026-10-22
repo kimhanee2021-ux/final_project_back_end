@@ -131,6 +131,7 @@ public final class CoachAnswerRenderer {
         // AI가 연도를 앞에 따로 쓰고 월 값(연도 포함)을 또 붙인 경우: "2024년 2024년 9월" -> "2024년 9월"
         .replaceAll("(\\d{4})년 \\1년 (\\d{1,2}월)", "$1년 $2").replace("시간시간", "시간").replace("분분", "분")
         .replace("%%", "%").replace("%퍼센트", "%");
+    text = fixBracketParticles(text);
     return new Rendered(text, List.copyOf(evidence.values()), List.copyOf(problems));
   }
 
@@ -191,6 +192,24 @@ public final class CoachAnswerRenderer {
       String field = path.substring(path.lastIndexOf('.') + 1);
       known.putIfAbsent(format(field, node).replace(" ", ""), path);
     }
+  }
+
+  // 게임 이름 같은 글자 뒤에 AI가 괄호 조사("Rebirth은(는)", "사이버펑크이(가)")를 남긴 경우 앞 글자의 받침에 맞는 하나로 바꾼다.
+  // 한글은 받침 유무, 숫자는 읽는 소리(0·1·3·6·7·8은 받침 있음), 영문·기호는 받침 없음("는/를/가/와")으로 본다.
+  private static final Pattern BRACKET_PARTICLE = Pattern.compile("(\\S)(이\\(가\\)|은\\(는\\)|을\\(를\\)|과\\(와\\))");
+
+  static String fixBracketParticles(String text) {
+    Matcher matcher = BRACKET_PARTICLE.matcher(text);
+    StringBuilder out = new StringBuilder();
+    while (matcher.find()) {
+      char last = matcher.group(1).charAt(0);
+      boolean batchim = last >= 0xAC00 && last <= 0xD7A3 ? (last - 0xAC00) % 28 != 0 : "013678".indexOf(last) >= 0;
+      String pair = matcher.group(2);
+      String chosen = batchim ? pair.substring(0, 1) : pair.substring(2, 3);
+      matcher.appendReplacement(out, Matcher.quoteReplacement(last + chosen));
+    }
+    matcher.appendTail(out);
+    return out.toString();
   }
 
   private record Resolved(String field, Object value) {

@@ -161,6 +161,15 @@ class CoachAnswerRendererTest {
   }
 
   @Test
+  void fixesBracketParticlesLeftAfterNamesAndNumbers() {
+    // 실제 답변: "The Binding of Isaac: Rebirth은(는)", 받침 있는 한글은 첫째, 없으면 둘째, 영문 이름은 받침 없음
+    assertEquals("Rebirth는 좋아요", CoachAnswerRenderer.render("Rebirth은(는) 좋아요", facts, "").text());
+    assertEquals("사이버펑크가 좋고 로봇이에요", CoachAnswerRenderer.render("사이버펑크이(가) 좋고 로봇이에요", facts, "").text());
+    assertEquals("몰입을 해요, 게임과 책을", CoachAnswerRenderer.render("몰입을(를) 해요, 게임과(와) 책을(를)", facts, "").text());
+    assertEquals("3은 삼이고 2는 이예요", CoachAnswerRenderer.render("3은(는) 삼이고 2은(는) 이예요", facts, "").text());
+  }
+
+  @Test
   void fixesPastTenseCopulaAfterValues() {
     // 실제 답변: "87,765원였고" -> 받침 있는 값 뒤는 "이었", 없는 값 뒤는 "였"
     assertEquals("87,765원이었고, 올해는 33%였어요",
