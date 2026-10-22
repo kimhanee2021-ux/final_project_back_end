@@ -1,0 +1,89 @@
+{
+  "thresholds": {
+    "20": {
+      "features": [
+        "ly_rate",
+        "ly_sale",
+        "is_summer",
+        "is_winter"
+      ],
+      "coefficients": {
+        "ly_rate": 0.912,
+        "ly_sale": 2.4029,
+        "is_summer": 0.0,
+        "is_winter": 0.1254
+      },
+      "intercept": -1.4128,
+      "metrics": {
+        "test_auc": 0.807,
+        "test_accuracy": 0.792,
+        "baseline_accuracy": 0.516,
+        "rule_accuracy": 0.792
+      }
+    },
+    "30": {
+      "features": [
+        "ly_rate",
+        "ly_sale",
+        "is_summer",
+        "is_winter"
+      ],
+      "coefficients": {
+        "ly_rate": 2.2958,
+        "ly_sale": 1.5194,
+        "is_summer": 0.0,
+        "is_winter": 0.1304
+      },
+      "intercept": -1.427,
+      "metrics": {
+        "test_auc": 0.818,
+        "test_accuracy": 0.792,
+        "baseline_accuracy": 0.514,
+        "rule_accuracy": 0.792
+      }
+    },
+    "40": {
+      "features": [
+        "ly_rate",
+        "ly_sale",
+        "is_summer",
+        "is_winter"
+      ],
+      "coefficients": {
+        "ly_rate": 2.8215,
+        "ly_sale": 1.2788,
+        "is_summer": 0.0,
+        "is_winter": 0.1504
+      },
+      "intercept": -1.6651,
+      "metrics": {
+        "test_auc": 0.828,
+        "test_accuracy": 0.797,
+        "baseline_accuracy": 0.554,
+        "rule_accuracy": 0.797
+      }
+    },
+    "50": {
+      "features": [
+        "ly_rate",
+        "ly_sale",
+        "is_summer",
+        "is_winter"
+      ],
+      "coefficients": {
+        "ly_rate": 2.8854,
+        "ly_sale": 1.3273,
+        "is_summer": 0.0,
+        "is_winter": 0.1412
+      },
+      "intercept": -1.8538,
+      "metrics": {
+        "test_auc": 0.834,
+        "test_accuracy": 0.803,
+        "baseline_accuracy": 0.585,
+        "rule_accuracy": 0.803
+      }
+    }
+  },
+  "note": "작년 같은 달 할인율로 올해 같은 달 n% 이상 할인 확률 추정. 참고용."
+}
