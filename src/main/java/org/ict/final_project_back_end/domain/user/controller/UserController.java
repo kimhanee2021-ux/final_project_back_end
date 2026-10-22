@@ -44,4 +44,12 @@ public class UserController implements UserApiDocs {
     userService.deleteUser(userId);
     return ResponseEntity.noContent().build();
   }
+
+  // 스팀 연동은 /api/auth/steam(permitAll, 쿼리 토큰)으로 하지만, 해제는 일반 JWT 인증이 필요해서 /api/users/me 아래에 둔다.
+  @Override
+  @DeleteMapping("/steam")
+  public ResponseEntity<Void> unlinkSteam(@AuthenticationPrincipal Long userId) {
+    userService.unlinkSteam(userId);
+    return ResponseEntity.noContent().build();
+  }
 }
