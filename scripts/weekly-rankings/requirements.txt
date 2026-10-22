@@ -1,0 +1,2 @@
+# Only required for explicit --apply; offline validation uses stdlib.
+PyMySQL[rsa]>=1.1.1,<2
