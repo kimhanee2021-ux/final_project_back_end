@@ -39,22 +39,22 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
     http
-        // JWT는 쿠키가 아니라 헤더로 전달되므로 CSRF 공격 대상이 아님 -> 비활성화
-        .csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults())
-        // JWT만으로 인증하므로 서버 세션을 만들지 않는다
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth
-            // 로그인/회원가입, 스웨거는 인증 없이 허용
-            .requestMatchers("/api/auth/**","/api/games/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
-            // 그 외 /api/** 는 반드시 로그인(JWT)이 있어야 접근 가능
-            .requestMatchers("/api/**").authenticated()
-            .anyRequest().permitAll())
-        // 토큰이 없거나 잘못된 요청은 기본값(403) 대신 401로 응답 -> 프론트에서 로그인 페이지로 보내기 쉬움
-        .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-        // 이메일 로그인용 필터보다 먼저 JWT 검사 필터를 태워서, 헤더에 유효한 토큰이 있으면
-        // 이 시점에 SecurityContext에 인증 정보를 채워둔다
-        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            // JWT는 쿠키가 아니라 헤더로 전달되므로 CSRF 공격 대상이 아님 -> 비활성화
+            .csrf(csrf -> csrf.disable())
+            .cors(Customizer.withDefaults())
+            // JWT만으로 인증하므로 서버 세션을 만들지 않는다
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    // 로그인/회원가입, 스웨거는 인증 없이 허용
+                    .requestMatchers("/api/auth/**","/api/games/**", "/api/wishsales/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                    // 그 외 /api/** 는 반드시 로그인(JWT)이 있어야 접근 가능
+                    .requestMatchers("/api/**").authenticated()
+                    .anyRequest().permitAll())
+            // 토큰이 없거나 잘못된 요청은 기본값(403) 대신 401로 응답 -> 프론트에서 로그인 페이지로 보내기 쉬움
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            // 이메일 로그인용 필터보다 먼저 JWT 검사 필터를 태워서, 헤더에 유효한 토큰이 있으면
+            // 이 시점에 SecurityContext에 인증 정보를 채워둔다
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 

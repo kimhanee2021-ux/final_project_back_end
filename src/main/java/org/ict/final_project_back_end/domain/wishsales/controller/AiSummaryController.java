@@ -12,10 +12,10 @@ import java.util.Arrays;
 import java.util.List;
 
 // [추가] AI 요약 API. 위시리스트의 "AI 요약 보기" 버튼을 누를 때 한 번만 호출된다.
-// GET /api/games/ai-summary?appIds=1245620,1091500
-// /api/games/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
+// GET /api/wishsales/ai-summary?appIds=1245620,1091500
+// /api/wishsales/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
 @RestController
-@RequestMapping("/api/games")
+@RequestMapping("/api/wishsales")
 public class AiSummaryController {
     private final AiSummaryService service;
 

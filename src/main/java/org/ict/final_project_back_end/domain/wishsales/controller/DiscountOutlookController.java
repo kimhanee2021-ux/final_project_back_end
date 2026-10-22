@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 // [추가] 할인 달 전망 API.
-// GET /api/games/discount-outlook?appId=1245620&threshold=30
-// /api/games/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
+// GET /api/wishsales/discount-outlook?appId=1245620&threshold=30
+// /api/wishsales/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
 @RestController
-@RequestMapping("/api/games")
+@RequestMapping("/api/wishsales")
 public class DiscountOutlookController {
     private final DiscountOutlookService service;
 

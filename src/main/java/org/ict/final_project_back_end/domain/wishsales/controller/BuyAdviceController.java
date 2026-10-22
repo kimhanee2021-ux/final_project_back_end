@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 // [추가] 지금 살지 기다릴지 판단 API.
-// GET /api/games/buy-advice?appId=1245620
-// /api/games/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
+// GET /api/wishsales/buy-advice?appId=1245620
+// /api/wishsales/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
 @RestController
-@RequestMapping("/api/games")
+@RequestMapping("/api/wishsales")
 public class BuyAdviceController {
     private final BuyAdviceService service;
 
