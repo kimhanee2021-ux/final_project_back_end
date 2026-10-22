@@ -70,20 +70,4 @@ public interface UserApiDocs {
       @Parameter(hidden = true)
       @AuthenticationPrincipal Long userId
   );
-
-  @Operation(
-      summary = "스팀 연동 해제",
-      description = "현재 사용자의 스팀 연동을 끊고, 그 스팀 계정에서 동기화한 보유 게임 목록을 지운다. "
-          + "직접 가져온 구매내역은 그대로 둔다(지우려면 DELETE /api/purchases). 연동하지 않은 상태에서 불러도 성공으로 본다."
-  )
-  @SecurityRequirement(name = "bearerAuth")
-  @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "해제 성공", content = @Content),
-      @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content),
-      @ApiResponse(responseCode = "404", description = "존재하지 않는 회원", content = @Content)
-  })
-  ResponseEntity<Void> unlinkSteam(
-      @Parameter(hidden = true)
-      @AuthenticationPrincipal Long userId
-  );
 }

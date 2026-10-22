@@ -12,7 +12,4 @@ public interface UserService {
   UserResponse updateUserInfo(Long userId, UserUpdateRequest request);
 
   void deleteUser(Long userId);
-
-  // 스팀 연동을 끊는다. 그 스팀 계정에서 동기화한 보유 게임은 지우고, 직접 가져온 구매내역은 남긴다.
-  void unlinkSteam(Long userId);
 }

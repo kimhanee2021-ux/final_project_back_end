@@ -36,15 +36,11 @@ public class SteamAuthController {
   // Authorization 헤더가 아니라 쿼리 파라미터로 토큰을 받는 이유: 스팀 로그인 페이지로 가는 302
   // 리다이렉트는 브라우저의 최상위 탐색(top-level navigation)이라 커스텀 헤더를 실어 보낼 수 없다.
   @GetMapping
-  // popup=true는 프론트가 연동을 새 창(팝업)으로 띄웠다는 표시다. 스팀을 다녀온 콜백까지 이 값을 들고 와서,
-  // 끝난 뒤 프론트가 "이 창은 팝업이니 원래 창에 알리고 닫는다"고 판단할 수 있게 한다.
-  public ResponseEntity<Void> steamLogin(@RequestParam String token,
-                                         @RequestParam(required = false) boolean popup,
-                                         HttpServletRequest request) {
+  public ResponseEntity<Void> steamLogin(@RequestParam String token, HttpServletRequest request) {
     String baseUrl = baseUrl(request);
     URI redirectUri = steamAuthService.buildLoginRedirectUri(
         token,
-        baseUrl + "/api/auth/steam/callback" + (popup ? "?popup=true" : ""),
+        baseUrl + "/api/auth/steam/callback",
         baseUrl + "/");
     return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
   }
@@ -53,15 +49,12 @@ public class SteamAuthController {
   // 저장하고 프론트엔드로 다시 리다이렉트한다.
   @GetMapping("/callback")
   public ResponseEntity<Void> steamCallback(@RequestParam String state,
-                                             @RequestParam(required = false) boolean popup,
                                              @RequestParam Map<String, String> allParams) {
     steamAuthService.linkSteamAccount(state, allParams);
-    UriComponentsBuilder redirect = UriComponentsBuilder.fromUriString(frontendBaseUrl)
-        .queryParam("steamLinked", "true");
-    if (popup) {
-      redirect.queryParam("popup", "true");
-    }
-    URI redirectUri = redirect.build().toUri();
+    URI redirectUri = UriComponentsBuilder.fromUriString(frontendBaseUrl)
+        .queryParam("steamLinked", "true")
+        .build()
+        .toUri();
     return ResponseEntity.status(HttpStatus.FOUND).location(redirectUri).build();
   }
 

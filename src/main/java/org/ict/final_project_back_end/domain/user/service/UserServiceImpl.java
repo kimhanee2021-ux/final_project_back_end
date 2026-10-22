@@ -1,7 +1,6 @@
 package org.ict.final_project_back_end.domain.user.service;
 
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
-import org.ict.final_project_back_end.domain.budget.repository.BudgetRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
@@ -24,20 +23,17 @@ public class UserServiceImpl implements UserService {
   private final LibraryGameRepository libraryGameRepository;
   private final PurchaseTransactionRepository purchaseTransactionRepository;
   private final GameLicenseRepository gameLicenseRepository;
-  private final BudgetRepository budgetRepository;
   private final PasswordEncoder passwordEncoder;
 
   public UserServiceImpl(UserRepository userRepository,
                          LibraryGameRepository libraryGameRepository,
                          PurchaseTransactionRepository purchaseTransactionRepository,
                          GameLicenseRepository gameLicenseRepository,
-                         BudgetRepository budgetRepository,
                          PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.purchaseTransactionRepository = purchaseTransactionRepository;
     this.gameLicenseRepository = gameLicenseRepository;
-    this.budgetRepository = budgetRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -88,20 +84,9 @@ public class UserServiceImpl implements UserService {
     User user = findUser(userId);
     libraryGameRepository.deleteByUserId(userId);
     gameLicenseRepository.deleteByUserId(userId);
-    budgetRepository.deleteByUserId(userId);
     purchaseTransactionRepository.deleteItemsByUserId(userId);
     purchaseTransactionRepository.deleteTransactionsByUserId(userId);
     userRepository.delete(user);
-  }
-
-  // 연동하지 않은 상태에서 불러도 같은 결과(해제됨)이므로 예외를 던지지 않는다.
-  // 보유 게임(library_games)은 연동한 스팀 계정에서 받아 온 사본이라 함께 지운다. 다시 연동하면 동기화로 채워진다.
-  @Override
-  @Transactional
-  public void unlinkSteam(Long userId) {
-    User user = findUser(userId);
-    libraryGameRepository.deleteByUserId(userId);
-    user.setSteamId(null);
   }
 
   private User findUser(Long userId) {
