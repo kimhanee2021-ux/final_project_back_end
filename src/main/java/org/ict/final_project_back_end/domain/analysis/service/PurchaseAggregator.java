@@ -24,8 +24,6 @@ import java.util.Set;
 final class PurchaseAggregator {
 
   record GameSpend(int paidKrw, int refundKrw, LocalDate firstPurchasedAt, int dlcCount, int savedKrw, int bundleCount) {
-    static final GameSpend EMPTY = new GameSpend(0, 0, null, 0, 0, 0);
-
     GameSpend add(GameSpend other) {
       LocalDate first = firstPurchasedAt == null
           || (other.firstPurchasedAt != null && other.firstPurchasedAt.isBefore(firstPurchasedAt))

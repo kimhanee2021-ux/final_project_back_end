@@ -19,7 +19,7 @@ class PcPartsCacheTest {
     when(users.existsById(1L)).thenReturn(true);
     when(prices.findTop2ByProductCodeAndSourceKeyOrderByIdDesc(anyLong(), anyString()))
         .thenReturn(List.of());
-    assertTrue(new PcPartsService(prices, users).cachedOffers(1L).isEmpty());
+    assertTrue(new PcPartsService(prices, users, new PcPriceSourceClient()).cachedOffers(1L).isEmpty());
     verify(prices, never()).save(any());
   }
 
@@ -38,7 +38,7 @@ class PcPartsCacheTest {
                     "OBSERVED",
                     "old",
                     Instant.now().minusSeconds(22000).toString())));
-    assertTrue(new PcPartsService(prices, users).cachedOffers(1L).isEmpty());
+    assertTrue(new PcPartsService(prices, users, new PcPriceSourceClient()).cachedOffers(1L).isEmpty());
     verify(prices, never()).save(any());
   }
 }

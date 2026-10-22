@@ -27,9 +27,9 @@ public class SteamContentDescriptorClient {
         .queryParam("appids", appId)
         .build(true)
         .toUri();
-    Map<String, SteamPriceClient.AppPrice> body = restClient.get().uri(uri).retrieve()
+    Map<String, AppDetails> body = restClient.get().uri(uri).retrieve()
         .body(new ParameterizedTypeReference<>() {});
-    SteamPriceClient.AppPrice app = body == null ? null : body.get(String.valueOf(appId));
+    AppDetails app = body == null ? null : body.get(String.valueOf(appId));
     if (app == null || !app.success() || !(app.data() instanceof Map<?, ?> data)) {
       return null;
     }
@@ -43,5 +43,9 @@ public class SteamContentDescriptorClient {
       }
     }
     return ids;
+  }
+
+  // data는 성공 시 객체, 정보가 없으면 빈 배열([])로 와서 Object로 받아 직접 꺼낸다
+  record AppDetails(boolean success, Object data) {
   }
 }

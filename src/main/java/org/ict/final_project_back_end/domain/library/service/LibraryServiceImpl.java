@@ -2,6 +2,7 @@ package org.ict.final_project_back_end.domain.library.service;
 
 import org.ict.final_project_back_end.domain.game.entity.Game;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import org.ict.final_project_back_end.domain.library.client.SteamLibraryClient;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGamePriceResponse;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGameResponse;
 import org.ict.final_project_back_end.domain.library.dto.SteamOwnedGamesResponse;
@@ -9,19 +10,11 @@ import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.PrivateSteamLibraryException;
-import org.ict.final_project_back_end.global.exception.SteamApiException;
 import org.ict.final_project_back_end.global.exception.SteamNotLinkedException;
 import org.ict.final_project_back_end.global.exception.UserNotFoundException;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -29,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_API_BASE_URL;
 
 @Service
 public class LibraryServiceImpl implements LibraryService {
@@ -41,17 +32,16 @@ public class LibraryServiceImpl implements LibraryService {
   private final UserRepository userRepository;
   private final LibraryGameRepository libraryGameRepository;
   private final GameRepository gameRepository;
-  private final RestClient restClient = RestClient.create();
-  private final String steamApiKey;
+  private final SteamLibraryClient steamLibraryClient;
 
   public LibraryServiceImpl(UserRepository userRepository,
                             LibraryGameRepository libraryGameRepository,
                             GameRepository gameRepository,
-                            @Value("${steam.api-key}") String steamApiKey) {
+                            SteamLibraryClient steamLibraryClient) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.gameRepository = gameRepository;
-    this.steamApiKey = steamApiKey;
+    this.steamLibraryClient = steamLibraryClient;
   }
 
   @Override
@@ -62,7 +52,7 @@ public class LibraryServiceImpl implements LibraryService {
       throw new SteamNotLinkedException();
     }
 
-    List<SteamOwnedGamesResponse.Game> steamGames = fetchOwnedGames(user.getSteamId());
+    List<SteamOwnedGamesResponse.Game> steamGames = steamLibraryClient.fetchOwnedGames(user.getSteamId());
 
     // appId 기준으로 기존 행을 찾아 갱신하고, 없는 게임만 새로 만든다 (중복 저장 방지)
     Map<Long, LibraryGame> existingByAppId = libraryGameRepository.findAllByUserId(userId).stream()
@@ -102,34 +92,6 @@ public class LibraryServiceImpl implements LibraryService {
         .lastPlayedAt(lastPlayedAt)
         .iconUrl(iconUrl)
         .build();
-  }
-
-  private List<SteamOwnedGamesResponse.Game> fetchOwnedGames(String steamId) {
-    URI uri = UriComponentsBuilder.fromUriString(STEAM_API_BASE_URL + "/IPlayerService/GetOwnedGames/v1/")
-        .queryParam("key", steamApiKey)
-        .queryParam("steamid", steamId)
-        .queryParam("include_appinfo", true)
-        .queryParam("include_played_free_games", true)
-        .queryParam("format", "json")
-        .encode(StandardCharsets.UTF_8)
-        .build()
-        .toUri();
-
-    SteamOwnedGamesResponse response;
-    try {
-      response = restClient.get()
-          .uri(uri)
-          .retrieve()
-          .body(SteamOwnedGamesResponse.class);
-    } catch (RestClientException e) {
-      // 예외 메시지에는 요청 URL(=API 키 포함)이 섞일 수 있으므로 원본 예외는 전달하지 않는다
-      throw new SteamApiException();
-    }
-
-    if (response == null || response.response() == null || response.response().games() == null) {
-      throw new PrivateSteamLibraryException();
-    }
-    return response.response().games();
   }
 
   private Integer valueOrZero(Integer value) {

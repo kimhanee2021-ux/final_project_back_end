@@ -63,19 +63,6 @@ public final class PcFpsEvidence {
         targets);
   }
 
-  public static List<PcFps.Sample> references(PcSpecs pc, long appId) {
-    return SAMPLES.stream().filter(s -> s.appId() == appId && sameGpu(pc, s)).toList();
-  }
-
-  public static Map<String, PcFps.Projection> projections(PcSpecs pc, long appId) {
-    var result = new LinkedHashMap<String, PcFps.Projection>();
-    for (String resolution : List.of("FHD", "QHD", "4K")) {
-      var evidence = find(pc, appId, resolution);
-      if (evidence.projection() != null) result.put(resolution, evidence.projection());
-    }
-    return Map.copyOf(result);
-  }
-
   /** AI는 조건/한계만 해설하고 수치는 검증된 서버 응답 영역에서 표시한다. */
   public static Map<String, Object> explanationContext(PcSpecs pc, long appId) {
     var context = new LinkedHashMap<String, Object>();

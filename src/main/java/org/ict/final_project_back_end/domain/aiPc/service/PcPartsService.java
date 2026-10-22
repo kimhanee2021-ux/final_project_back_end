@@ -1,8 +1,5 @@
 package org.ict.final_project_back_end.domain.aiPc.service;
 
-import java.net.URI;
-import java.net.http.*;
-import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.*;
 import org.ict.final_project_back_end.domain.aiCommon.exception.AiException;
@@ -10,40 +7,52 @@ import org.ict.final_project_back_end.domain.aiPc.dto.PcPart;
 import org.ict.final_project_back_end.domain.aiPc.entity.PcPartPriceSnapshot;
 import org.ict.final_project_back_end.domain.aiPc.repository.PcPartPriceRepository;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PcPartsService {
+  private static final Set<String> CATEGORIES = Set.of("CPU", "GPU", "RAM", "SSD");
+  // 저장된 가격은 6시간 동안 유효하다.
+  private static final long PRICE_TTL_SECONDS = 21600;
+
   private final PcPartPriceRepository prices;
   private final UserRepository users;
-  private final HttpClient http =
-      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
+  private final PcPriceSourceClient sources;
 
-  public PcPartsService(PcPartPriceRepository p, UserRepository u) {
+  public PcPartsService(PcPartPriceRepository p, UserRepository u, PcPriceSourceClient s) {
     prices = p;
     users = u;
+    sources = s;
+  }
+
+  private void authenticated(Long userId) {
+    if (userId == null || !users.existsById(userId))
+      throw new AiException(HttpStatus.UNAUTHORIZED, "로그인 후 부품을 확인해주세요.");
+  }
+
+  private static boolean expired(PcPartPriceSnapshot snapshot) {
+    return Instant.parse(snapshot.at()).isBefore(Instant.now().minusSeconds(PRICE_TTL_SECONDS));
   }
 
   public List<PcPart.Offer> offers(Long userId) {
-    if (userId == null || !users.existsById(userId))
-      throw new AiException(org.springframework.http.HttpStatus.UNAUTHORIZED, "로그인 후 부품을 확인해주세요.");
+    authenticated(userId);
     return collect();
   }
 
   // 진단은 외부 가격 갱신을 기다리지 않는다. 유효한 저장값만 사용하고 없으면 후보를 비운다.
   public List<PcPart.Offer> cachedOffers(Long userId) {
-    if (userId == null || !users.existsById(userId))
-      throw new AiException(org.springframework.http.HttpStatus.UNAUTHORIZED, "로그인 후 부품을 확인해주세요.");
+    authenticated(userId);
     var result = new ArrayList<PcPart.Offer>();
     for (var part : PcPartsCatalog.PARTS) {
-      if (!Set.of("CPU", "GPU", "RAM", "SSD").contains(part.category())) continue;
+      if (!CATEGORIES.contains(part.category())) continue;
       var quotes = new ArrayList<PcPart.RetailQuote>();
       for (String source : List.of("DANAWA", "COMTRIX")) {
         var history =
             prices.findTop2ByProductCodeAndSourceKeyOrderByIdDesc(part.productCode(), source);
         if (history.isEmpty()) continue;
         var current = history.getFirst();
-        if (!Instant.parse(current.at()).isAfter(Instant.now().minusSeconds(21600))) continue;
+        if (!Instant.parse(current.at()).isAfter(Instant.now().minusSeconds(PRICE_TTL_SECONDS))) continue;
         String url =
             "DANAWA".equals(source)
                 ? part.priceSource()
@@ -82,13 +91,12 @@ public class PcPartsService {
   private synchronized List<PcPart.Offer> collect() {
     var result = new ArrayList<PcPart.Offer>();
     for (var part : PcPartsCatalog.PARTS) {
-      if (!Set.of("CPU", "GPU", "RAM", "SSD").contains(part.category())) continue;
+      if (!CATEGORIES.contains(part.category())) continue;
       var history =
           prices.findTop2ByProductCodeAndSourceKeyOrderByIdDesc(part.productCode(), "DANAWA");
       PcPartPriceSnapshot current = history.isEmpty() ? null : history.get(0),
           previous = history.size() > 1 ? history.get(1) : null;
-      if (current == null
-          || Instant.parse(current.at()).isBefore(Instant.now().minusSeconds(21600))) {
+      if (current == null || expired(current)) {
         previous = current;
         current = fetch(part);
         prices.save(current);
@@ -116,25 +124,11 @@ public class PcPartsService {
     var history =
         prices.findTop2ByProductCodeAndSourceKeyOrderByIdDesc(part.productCode(), "COMTRIX");
     var current = history.isEmpty() ? null : history.getFirst();
-    if (current == null
-        || Instant.parse(current.at()).isBefore(Instant.now().minusSeconds(21600))) {
+    if (current == null || expired(current)) {
       String at = Instant.now().toString();
       PcPartPrices.Parsed parsed;
       try {
-        var request =
-            HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(8))
-                .header("User-Agent", "GameSense-PC-Research/1.0")
-                .GET()
-                .build();
-        var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        try (var stream = response.body()) {
-          byte[] body = stream.readNBytes(2097153);
-          if (response.statusCode() != 200 || body.length > 2097152)
-            throw new IllegalStateException();
-          parsed =
-              PcRetailPrices.parseComtrix(new String(body, StandardCharsets.UTF_8), part.name());
-        }
+        parsed = PcRetailPrices.parseComtrix(sources.fetchPage(url), part.name());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         parsed = new PcPartPrices.Parsed(null, "FAILED", "판매처 조회가 중단됐어요.");
@@ -159,21 +153,9 @@ public class PcPartsService {
   private PcPartPriceSnapshot fetch(PcPart part) {
     String at = Instant.now().toString();
     try {
-      var request =
-          HttpRequest.newBuilder(URI.create(part.priceSource()))
-              .timeout(Duration.ofSeconds(8))
-              .header("User-Agent", "GameSense-PC-Research/1.0")
-              .GET()
-              .build();
-      var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
-      try (var stream = response.body()) {
-        byte[] body = stream.readNBytes(2097153);
-        if (response.statusCode() != 200 || body.length > 2097152)
-          throw new IllegalStateException();
-        var value = PcPartPrices.parse(new String(body, StandardCharsets.UTF_8), part.name());
-        return new PcPartPriceSnapshot(
-            part.productCode(), value.price(), value.status(), value.note(), at);
-      }
+      var value = PcPartPrices.parse(sources.fetchPage(part.priceSource()), part.name());
+      return new PcPartPriceSnapshot(
+          part.productCode(), value.price(), value.status(), value.note(), at);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return new PcPartPriceSnapshot(

@@ -5,7 +5,6 @@ import org.ict.final_project_back_end.domain.analysis.dto.SpendingGameResponse;
 import org.ict.final_project_back_end.domain.budget.dto.BudgetResponse;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;

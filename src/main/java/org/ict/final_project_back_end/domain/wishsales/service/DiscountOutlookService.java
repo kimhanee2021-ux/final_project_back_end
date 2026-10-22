@@ -1,6 +1,5 @@
 package org.ict.final_project_back_end.domain.wishsales.service;
 
-import org.ict.final_project_back_end.domain.wishsales.client.ItadClient;
 import org.ict.final_project_back_end.domain.wishsales.dto.DiscountOutlookDtos.DiscountOutlookResponse;
 import org.ict.final_project_back_end.domain.wishsales.dto.DiscountOutlookDtos.MonthChance;
 import org.ict.final_project_back_end.domain.wishsales.dto.WishlistSalesDtos.PricePoint;
@@ -11,27 +10,21 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 // [추가] 할인 달 전망 서비스.
-// 1) ITAD에서 가격 이력 가져오기 (6시간 캐시)
+// 1) ITAD에서 가격 이력 가져오기 (PriceHistoryCache, 6시간 캐시)
 // 2) 월별 최대 할인율 계산
 // 3) 작년 할인 달, 올해 확인된 할인 달, 남은 달의 확률 만들기
 @Service
 public class DiscountOutlookService {
-    private static final long TTL_MS = 6L * 60 * 60 * 1000;
     // 기준 할인율 기본 시간대: 한국 시간으로 "올해"를 판단한다
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
 
-    private final ItadClient itad;
+    private final PriceHistoryCache history;
     private final DiscountProbabilityModel model;
-    private final Map<Long, Cached> cache = new ConcurrentHashMap<>();
 
-    private record Cached(List<PricePoint> points, long savedAt) {}
-
-    public DiscountOutlookService(ItadClient itad, DiscountProbabilityModel model) {
-        this.itad = itad;
+    public DiscountOutlookService(PriceHistoryCache history, DiscountProbabilityModel model) {
+        this.history = history;
         this.model = model;
     }
 
@@ -43,7 +36,7 @@ public class DiscountOutlookService {
         // 가격 이력 가져오기 (실패하면 이유를 돌려준다)
         List<PricePoint> points;
         try {
-            points = historyOf(appId);
+            points = history.historyOf(appId);
         } catch (Exception e) {
             return DiscountOutlookResponse.insufficient(appId, threshold, "가격 기록을 가져오지 못했어요");
         }
@@ -90,19 +83,5 @@ public class DiscountOutlookService {
         }
 
         return new DiscountOutlookResponse(appId, threshold, "OK", null, lastYearSale, thisYearSale, upcoming);
-    }
-
-    // 게임 ID 조회 + 가격 이력 (캐시 사용). 키가 없으면 null
-    private List<PricePoint> historyOf(long appId) {
-        Cached c = cache.get(appId);
-        if (c != null && System.currentTimeMillis() - c.savedAt() < TTL_MS) return c.points();
-        if (!itad.isConfigured()) return null;
-
-        Optional<String> itadId = itad.lookupId(appId);
-        if (itadId.isEmpty()) return null;
-
-        List<PricePoint> points = itad.history(itadId.get());
-        cache.put(appId, new Cached(points, System.currentTimeMillis()));
-        return points;
     }
 }
