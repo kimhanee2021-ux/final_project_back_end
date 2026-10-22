@@ -1,10 +1,10 @@
 package org.ict.final_project_back_end.domain.budget.controller;
 
 import jakarta.validation.Valid;
+import org.ict.final_project_back_end.domain.budget.controller.docs.BudgetApiDocs;
 import org.ict.final_project_back_end.domain.budget.dto.BudgetRequest;
 import org.ict.final_project_back_end.domain.budget.dto.BudgetResponse;
 import org.ict.final_project_back_end.domain.budget.service.BudgetService;
-import org.ict.final_project_back_end.global.swagger.BudgetApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

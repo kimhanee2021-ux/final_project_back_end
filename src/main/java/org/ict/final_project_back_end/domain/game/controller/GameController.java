@@ -1,9 +1,9 @@
 package org.ict.final_project_back_end.domain.game.controller;
 
+import org.ict.final_project_back_end.domain.game.controller.docs.GameApiDocs;
 import org.ict.final_project_back_end.domain.game.dto.GameDetailResponse;
 import org.ict.final_project_back_end.domain.game.dto.GamePageResponse;
 import org.ict.final_project_back_end.domain.game.service.GameService;
-import org.ict.final_project_back_end.global.swagger.GameApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

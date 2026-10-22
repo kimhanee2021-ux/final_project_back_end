@@ -5,9 +5,9 @@ import org.ict.final_project_back_end.domain.budget.dto.BudgetResponse;
 import org.ict.final_project_back_end.domain.budget.entity.Budget;
 import org.ict.final_project_back_end.domain.budget.repository.BudgetRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
 import org.ict.final_project_back_end.global.exception.AuthenticationRequiredException;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -9,9 +9,9 @@ import org.ict.final_project_back_end.domain.library.dto.SteamOwnedGamesResponse
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.SteamNotLinkedException;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.SteamNotLinkedException;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

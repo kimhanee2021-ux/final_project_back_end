@@ -1,13 +1,14 @@
 package org.ict.final_project_back_end.domain.board.controller;
 
-import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
-import org.springframework.web.bind.annotation.RequestParam;
-import java.net.URI;
+import org.ict.final_project_back_end.domain.board.controller.docs.BoardApiDocs;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateRequest;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateResponse;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostDetailResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest;
 import org.ict.final_project_back_end.domain.board.service.BoardPostService;
-import org.ict.final_project_back_end.global.swagger.BoardApiDocs;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -56,7 +57,7 @@ public class BoardController implements BoardApiDocs {
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
   public ResponseEntity<BoardPostDetailResponse> update(@AuthenticationPrincipal Long userId,
       @PathVariable("id") Long id,
-      @RequestBody org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
+      @RequestBody BoardPostUpdateRequest request) {
     return ResponseEntity.ok(service.updatePost(userId, id, request));
   }
 

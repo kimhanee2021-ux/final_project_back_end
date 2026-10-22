@@ -1,8 +1,8 @@
 package org.ict.final_project_back_end.domain.board.controller;
 import java.net.URI;
+import org.ict.final_project_back_end.domain.board.controller.docs.BoardCommentApiDocs;
 import org.ict.final_project_back_end.domain.board.dto.*;
 import org.ict.final_project_back_end.domain.board.service.BoardCommentService;
-import org.ict.final_project_back_end.global.swagger.BoardCommentApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;

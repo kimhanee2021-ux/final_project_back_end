@@ -1,7 +1,7 @@
 package org.ict.final_project_back_end.domain.board.controller;
+import org.ict.final_project_back_end.domain.board.controller.docs.BoardLikeApiDocs;
 import org.ict.final_project_back_end.domain.board.dto.BoardLikeResponse;
 import org.ict.final_project_back_end.domain.board.service.BoardLikeService;
-import org.ict.final_project_back_end.global.swagger.BoardLikeApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;

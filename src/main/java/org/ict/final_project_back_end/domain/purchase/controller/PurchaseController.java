@@ -1,6 +1,7 @@
 package org.ict.final_project_back_end.domain.purchase.controller;
 
 import jakarta.validation.Valid;
+import org.ict.final_project_back_end.domain.purchase.controller.docs.PurchaseApiDocs;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.LicenseImportResponse;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseDeleteResponse;
@@ -8,7 +9,6 @@ import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportRequest;
 import org.ict.final_project_back_end.domain.purchase.dto.PurchaseImportResponse;
 import org.ict.final_project_back_end.domain.purchase.service.LicenseImportService;
 import org.ict.final_project_back_end.domain.purchase.service.PurchaseImportService;
-import org.ict.final_project_back_end.global.swagger.PurchaseApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;

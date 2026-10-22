@@ -1,7 +1,8 @@
 package org.ict.final_project_back_end.domain.game.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.ict.final_project_back_end.domain.game.client.SteamStoreBrowseClient;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;

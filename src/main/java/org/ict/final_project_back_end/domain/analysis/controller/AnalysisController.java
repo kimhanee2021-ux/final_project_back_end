@@ -1,8 +1,8 @@
 package org.ict.final_project_back_end.domain.analysis.controller;
 
+import org.ict.final_project_back_end.domain.analysis.controller.docs.AnalysisApiDocs;
 import org.ict.final_project_back_end.domain.analysis.dto.SpendingAnalysisResponse;
 import org.ict.final_project_back_end.domain.analysis.service.SpendingAnalysisService;
-import org.ict.final_project_back_end.global.swagger.AnalysisApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

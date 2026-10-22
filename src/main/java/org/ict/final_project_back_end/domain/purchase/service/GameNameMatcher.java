@@ -2,6 +2,7 @@ package org.ict.final_project_back_end.domain.purchase.service;
 
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
+import org.ict.final_project_back_end.domain.purchase.client.SteamAppInfoClient;
 import org.ict.final_project_back_end.domain.purchase.entity.PurchaseItem;
 import org.springframework.stereotype.Component;
 

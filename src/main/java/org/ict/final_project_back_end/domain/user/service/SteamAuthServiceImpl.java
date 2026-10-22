@@ -2,12 +2,12 @@ package org.ict.final_project_back_end.domain.user.service;
 
 import org.ict.final_project_back_end.domain.user.client.SteamOpenIdClient;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.DuplicateSteamIdException;
+import org.ict.final_project_back_end.domain.user.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.domain.user.exception.InvalidSteamAuthException;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
 import org.ict.final_project_back_end.global.constant.SteamUrls;
-import org.ict.final_project_back_end.global.exception.DuplicateSteamIdException;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
-import org.ict.final_project_back_end.global.exception.InvalidSteamAuthException;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.ict.final_project_back_end.global.security.JwtService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

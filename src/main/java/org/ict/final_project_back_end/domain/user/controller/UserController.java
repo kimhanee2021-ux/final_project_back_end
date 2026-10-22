@@ -1,9 +1,9 @@
 package org.ict.final_project_back_end.domain.user.controller;
 
+import org.ict.final_project_back_end.domain.user.controller.docs.UserApiDocs;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserUpdateRequest;
 import org.ict.final_project_back_end.domain.user.service.UserService;
-import org.ict.final_project_back_end.global.swagger.UserApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;

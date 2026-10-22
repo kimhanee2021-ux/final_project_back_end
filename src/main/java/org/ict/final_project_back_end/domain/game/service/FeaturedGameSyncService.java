@@ -1,10 +1,11 @@
 package org.ict.final_project_back_end.domain.game.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.ict.final_project_back_end.domain.game.client.SteamFeaturedClient;
 import org.ict.final_project_back_end.domain.game.entity.FeaturedCategoryGame;
 import org.ict.final_project_back_end.domain.game.entity.FeaturedGame;
 import org.ict.final_project_back_end.domain.game.repository.FeaturedCategoryGameRepository;
 import org.ict.final_project_back_end.domain.game.repository.FeaturedGameRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;

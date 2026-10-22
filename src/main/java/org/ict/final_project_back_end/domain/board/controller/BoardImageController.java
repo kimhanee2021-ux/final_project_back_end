@@ -1,9 +1,9 @@
 package org.ict.final_project_back_end.domain.board.controller;
 import java.net.URI;
 import java.util.List;
+import org.ict.final_project_back_end.domain.board.controller.docs.BoardImageApiDocs;
 import org.ict.final_project_back_end.domain.board.dto.BoardImageResponse;
 import org.ict.final_project_back_end.domain.board.service.BoardImageService;
-import org.ict.final_project_back_end.global.swagger.BoardImageApiDocs;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;

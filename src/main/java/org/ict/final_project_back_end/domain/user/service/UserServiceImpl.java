@@ -1,17 +1,17 @@
 package org.ict.final_project_back_end.domain.user.service;
 
-import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.budget.repository.BudgetRepository;
+import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserUpdateRequest;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.DuplicateNicknameException;
+import org.ict.final_project_back_end.domain.user.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.DuplicateNicknameException;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
 import org.ict.final_project_back_end.global.exception.InvalidRequestException;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

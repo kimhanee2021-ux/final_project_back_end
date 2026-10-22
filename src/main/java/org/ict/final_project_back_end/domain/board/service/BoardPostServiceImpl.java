@@ -3,18 +3,20 @@ package org.ict.final_project_back_end.domain.board.service;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateRequest;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostCreateResponse;
 import org.ict.final_project_back_end.domain.board.dto.BoardPostDetailResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostSummaryResponse;
+import org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest;
 import org.ict.final_project_back_end.domain.board.entity.BoardPost;
+import org.ict.final_project_back_end.domain.board.exception.BoardPostConflictException;
 import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundException;
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
+import org.ict.final_project_back_end.domain.board.repository.BoardPostSpecifications;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.ict.final_project_back_end.domain.board.dto.BoardPostPageResponse;
-import org.ict.final_project_back_end.domain.board.dto.BoardPostSummaryResponse;
-import org.ict.final_project_back_end.domain.board.repository.BoardPostSpecifications;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -62,7 +64,7 @@ public class BoardPostServiceImpl implements BoardPostService {
   @Override
   @Transactional
   public BoardPostDetailResponse updatePost(Long userId, Long postId,
-      org.ict.final_project_back_end.domain.board.dto.BoardPostUpdateRequest request) {
+      BoardPostUpdateRequest request) {
     BoardPost post = accessGuard.ownedPostForUpdate(userId, postId);
     post.update(request.category(), request.appId(), request.tag(), request.title(),
         request.content(), request.isAnonymous(), request.expiresAt());
@@ -75,7 +77,7 @@ public class BoardPostServiceImpl implements BoardPostService {
   public void deletePost(Long userId, Long postId) {
     BoardPost post = accessGuard.ownedPostForUpdate(userId, postId);
     if (posts.countComments(postId) > 0 || posts.countImages(postId) > 0) {
-      throw new org.ict.final_project_back_end.domain.board.exception.BoardPostConflictException();
+      throw new BoardPostConflictException();
     }
     likes.removeAllForPost(postId);
     posts.delete(post);

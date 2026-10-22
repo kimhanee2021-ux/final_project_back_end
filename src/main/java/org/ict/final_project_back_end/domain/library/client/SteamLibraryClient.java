@@ -6,7 +6,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.ict.final_project_back_end.domain.library.dto.SteamOwnedGamesResponse;
-import org.ict.final_project_back_end.global.exception.PrivateSteamLibraryException;
+import org.ict.final_project_back_end.domain.library.exception.PrivateSteamLibraryException;
 import org.ict.final_project_back_end.global.exception.SteamApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
