@@ -1,7 +1,7 @@
 package org.ict.final_project_back_end.domain.gamenews.service;
 
-import org.ict.final_project_back_end.domain.game.exception.GameNotFoundException;
-import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import org.ict.final_project_back_end.domain.game.service.GameIdentityValidator;
+import org.ict.final_project_back_end.domain.game.service.GameSearchException;
 import org.ict.final_project_back_end.domain.gamenews.dto.*;
 import org.ict.final_project_back_end.domain.gamenews.entity.GameNewsCategory;
 import org.ict.final_project_back_end.domain.gamenews.exception.*;
@@ -20,10 +20,10 @@ import java.util.Objects;
 @Service
 @Transactional(readOnly = true)
 public class GameNewsQueryServiceImpl implements GameNewsQueryService {
-  private final GameRepository games;
+  private final GameIdentityValidator identities;
   private final GameNewsBriefingRepository briefings;
-  public GameNewsQueryServiceImpl(GameRepository games, GameNewsBriefingRepository briefings) {
-    this.games = games; this.briefings = briefings;
+  public GameNewsQueryServiceImpl(GameIdentityValidator identities, GameNewsBriefingRepository briefings) {
+    this.identities = identities; this.briefings = briefings;
   }
 
   @Override public GameNewsPageResponse list(Long appId, String category, int page, int size) {
@@ -54,8 +54,8 @@ public class GameNewsQueryServiceImpl implements GameNewsQueryService {
   }
 
   private void requireGame(long appId) {
-    if (appId <= 0 || appId > 0xffffffffL) throw new InvalidGameNewsQueryException("유효한 Steam 게임 번호가 필요합니다");
-    if (!games.existsById(appId)) throw new GameNotFoundException();
+    try { identities.require(Long.toString(appId)); }
+    catch (GameSearchException invalid) { throw new InvalidGameNewsQueryException(invalid.getMessage()); }
   }
 
   private GameNewsCategory category(String input) {
