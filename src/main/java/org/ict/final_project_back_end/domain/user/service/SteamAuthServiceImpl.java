@@ -1,19 +1,16 @@
 package org.ict.final_project_back_end.domain.user.service;
 
+import org.ict.final_project_back_end.domain.user.client.SteamOpenIdClient;
 import org.ict.final_project_back_end.domain.user.entity.User;
+import org.ict.final_project_back_end.domain.user.exception.DuplicateSteamIdException;
+import org.ict.final_project_back_end.domain.user.exception.InvalidCredentialsException;
+import org.ict.final_project_back_end.domain.user.exception.InvalidSteamAuthException;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
 import org.ict.final_project_back_end.global.constant.SteamUrls;
-import org.ict.final_project_back_end.global.exception.DuplicateSteamIdException;
-import org.ict.final_project_back_end.global.exception.InvalidCredentialsException;
-import org.ict.final_project_back_end.global.exception.InvalidSteamAuthException;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.ict.final_project_back_end.global.security.JwtService;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import static org.ict.final_project_back_end.global.constant.SteamUrls.STEAM_OPENID_ENDPOINT;
@@ -37,11 +34,13 @@ public class SteamAuthServiceImpl implements SteamAuthService {
 
   private final UserRepository userRepository;
   private final JwtService jwtService;
-  private final RestClient restClient = RestClient.create();
+  private final SteamOpenIdClient steamOpenIdClient;
 
-  public SteamAuthServiceImpl(UserRepository userRepository, JwtService jwtService) {
+  public SteamAuthServiceImpl(UserRepository userRepository, JwtService jwtService,
+                              SteamOpenIdClient steamOpenIdClient) {
     this.userRepository = userRepository;
     this.jwtService = jwtService;
+    this.steamOpenIdClient = steamOpenIdClient;
   }
 
   @Override
@@ -90,7 +89,9 @@ public class SteamAuthServiceImpl implements SteamAuthService {
 
     // 스팀이 보낸 파라미터는 중간에 조작되었을 수 있으므로, 그대로 다시 스팀에 보내
     // 서명이 유효한지(check_authentication) 재검증받기 전까지는 신뢰하지 않는다.
-    verifyWithSteam(openIdParams);
+    if (!steamOpenIdClient.isValid(openIdParams)) {
+      throw new InvalidSteamAuthException("스팀 인증 검증에 실패했습니다");
+    }
 
     userRepository.findBySteamId(steamId).ifPresent(existing -> {
       if (!existing.getId().equals(userId)) {
@@ -112,22 +113,5 @@ public class SteamAuthServiceImpl implements SteamAuthService {
       throw new InvalidSteamAuthException("스팀 계정 식별에 실패했습니다");
     }
     return matcher.group(1);
-  }
-
-  private void verifyWithSteam(Map<String, String> openIdParams) {
-    MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-    openIdParams.forEach(body::add);
-    body.set("openid.mode", "check_authentication");
-
-    String response = restClient.post()
-        .uri(STEAM_OPENID_ENDPOINT)
-        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-        .body(body)
-        .retrieve()
-        .body(String.class);
-
-    if (response == null || !response.contains("is_valid:true")) {
-      throw new InvalidSteamAuthException("스팀 인증 검증에 실패했습니다");
-    }
   }
 }

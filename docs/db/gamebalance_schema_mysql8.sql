@@ -69,10 +69,15 @@ CREATE TABLE games (
   discount_percent TINYINT NULL,
   review_count INT NULL,
   positive_rate DECIMAL(5,2) NULL,
+  original_price DECIMAL(10,2) NULL,
+  tags TEXT NULL,
+  categories TEXT NULL,
+  recommendations INT NULL,
   min_spec_raw_text TEXT NULL,
   rec_spec_raw_text TEXT NULL,
   thumbnail_url VARCHAR(500) NULL,
-  description TEXT NULL,
+  short_description TEXT NULL,
+  about_the_game TEXT NULL,
   last_synced_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='스팀 게임 카탈로그(1일 1회 캐싱)';
 

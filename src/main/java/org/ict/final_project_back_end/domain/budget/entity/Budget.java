@@ -52,6 +52,10 @@ public class Budget {
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
+  public void changeLimit(Integer limitAmount) {
+    this.limitAmount = limitAmount;
+  }
+
   // ddl-auto로 만든 테이블에는 ON UPDATE CURRENT_TIMESTAMP가 없으므로 JPA가 수정 시각을 채운다
   @PreUpdate
   void touchUpdatedAt() {

@@ -1,9 +1,9 @@
 package org.ict.final_project_back_end.domain.user.controller;
 
+import org.ict.final_project_back_end.domain.user.controller.docs.UserApiDocs;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserUpdateRequest;
 import org.ict.final_project_back_end.domain.user.service.UserService;
-import org.ict.final_project_back_end.global.swagger.UserApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,6 +42,14 @@ public class UserController implements UserApiDocs {
   @DeleteMapping
   public ResponseEntity<Void> deleteMyAccount(@AuthenticationPrincipal Long userId) {
     userService.deleteUser(userId);
+    return ResponseEntity.noContent().build();
+  }
+
+  // 스팀 연동은 /api/auth/steam(permitAll, 쿼리 토큰)으로 하지만, 해제는 일반 JWT 인증이 필요해서 /api/users/me 아래에 둔다.
+  @Override
+  @DeleteMapping("/steam")
+  public ResponseEntity<Void> unlinkSteam(@AuthenticationPrincipal Long userId) {
+    userService.unlinkSteam(userId);
     return ResponseEntity.noContent().build();
   }
 }

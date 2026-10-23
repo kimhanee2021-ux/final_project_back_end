@@ -4,8 +4,8 @@ import org.ict.final_project_back_end.domain.board.entity.ContentInteraction;
 import org.ict.final_project_back_end.domain.board.exception.BoardPostNotFoundException;
 import org.ict.final_project_back_end.domain.board.repository.BoardPostRepository;
 import org.ict.final_project_back_end.domain.board.repository.ContentInteractionRepository;
+import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
 import org.ict.final_project_back_end.domain.user.repository.UserRepository;
-import org.ict.final_project_back_end.global.exception.UserNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

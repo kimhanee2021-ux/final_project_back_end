@@ -1,9 +1,9 @@
 package org.ict.final_project_back_end.domain.library.controller;
 
+import org.ict.final_project_back_end.domain.library.controller.docs.LibraryApiDocs;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGamePriceResponse;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGameResponse;
 import org.ict.final_project_back_end.domain.library.service.LibraryService;
-import org.ict.final_project_back_end.global.swagger.LibraryApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

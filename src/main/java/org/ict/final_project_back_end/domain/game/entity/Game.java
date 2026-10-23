@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 // 스팀 게임 카탈로그(1일 1회 캐싱). PK는 스팀 appId를 그대로 쓴다.
@@ -43,17 +44,29 @@ public class Game {
   @Column(name = "positive_rate", precision = 5, scale = 2)
   private BigDecimal positiveRate;
 
-  @Column(name = "min_spec_raw_text", columnDefinition = "TEXT")
-  private String minSpecRawText;
+  @Column(name = "original_price", precision = 10, scale = 2)
+  private BigDecimal originalPrice;
 
-  @Column(name = "rec_spec_raw_text", columnDefinition = "TEXT")
-  private String recSpecRawText;
+  // 쉼표 구분 다중값 문자열. tags는 2026년 이후 게임에서 결측이 많다.
+  @Column(columnDefinition = "TEXT")
+  private String tags;
+
+  @Column(columnDefinition = "TEXT")
+  private String categories;
+
+  private Integer recommendations;
 
   @Column(name = "thumbnail_url", length = 500)
   private String thumbnailUrl;
 
-  @Column(columnDefinition = "TEXT")
-  private String description;
+  @Column(name = "short_description", columnDefinition = "TEXT")
+  private String shortDescription;
+
+  @Column(name = "about_the_game", columnDefinition = "TEXT")
+  private String aboutTheGame;
+
+  @Column(name = "release_date")
+  private LocalDate releaseDate;
 
   @Column(name = "last_synced_at")
   private LocalDateTime lastSyncedAt;

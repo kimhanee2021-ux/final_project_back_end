@@ -1,5 +1,6 @@
 package org.ict.final_project_back_end.domain.game.service;
 
+import org.ict.final_project_back_end.domain.game.client.SteamContentDescriptorClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;

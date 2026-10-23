@@ -1,12 +1,12 @@
 package org.ict.final_project_back_end.domain.user.controller;
 
+import org.ict.final_project_back_end.domain.user.controller.docs.AuthApiDocs;
 import org.ict.final_project_back_end.domain.user.dto.AvailabilityResponse;
 import org.ict.final_project_back_end.domain.user.dto.LoginRequest;
 import org.ict.final_project_back_end.domain.user.dto.SignupRequest;
 import org.ict.final_project_back_end.domain.user.dto.TokenResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.service.AuthService;
-import org.ict.final_project_back_end.global.swagger.AuthApiDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,0 +1,11 @@
+package org.ict.final_project_back_end.domain.user.exception;
+
+import org.ict.final_project_back_end.global.exception.BusinessException;
+import org.springframework.http.HttpStatus;
+
+public class DuplicateEmailException extends BusinessException {
+
+  public DuplicateEmailException() {
+    super(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", "이미 가입된 이메일입니다");
+  }
+}

@@ -1,5 +1,6 @@
 package org.ict.final_project_back_end.domain.purchase.service;
 
+import org.ict.final_project_back_end.domain.purchase.client.SteamAppInfoClient;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
