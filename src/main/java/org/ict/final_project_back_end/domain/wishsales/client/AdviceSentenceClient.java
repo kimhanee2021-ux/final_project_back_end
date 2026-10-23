@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import java.time.Duration;
 import org.springframework.web.client.RestClientResponseException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
@@ -31,7 +34,16 @@ import java.util.List;
 public class AdviceSentenceClient {
     private static final int LOG_PREVIEW_LEN = 300; // [추가] 로그에 찍을 원문 최대 길이
 
-    private final RestClient http = RestClient.create();
+    // [변경] 타임아웃 없는 RestClient.create()는 AI 응답이 안 오면 영원히 기다린다. 연결 5초, 응답 15초로 제한해서 다음 공급자로 넘어가게 한다.
+    private final RestClient http = RestClient.builder()
+            .requestFactory(timeoutRequestFactory())
+            .build();
+
+    private static ClientHttpRequestFactory timeoutRequestFactory() {
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
+        factory.setReadTimeout(Duration.ofSeconds(15));
+        return factory;
+    }
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final List<String> providers; // 시도할 공급자 순서
@@ -52,7 +64,7 @@ public class AdviceSentenceClient {
             @Value("${GEMINI_API_KEY:}") String geminiKey,
             @Value("${GEMINI_MODEL:gemini-3.8-flash}") String geminiModel,
             @Value("${GROQ_API_KEY:}") String groqKey,
-            @Value("${GROQ_MODEL:llama-3.3-70b-versatile}") String groqModel) {
+            @Value("${GROQ_MODEL:openai/gpt-oss-20b}") String groqModel) {
         // "gemini,groq" 같은 문자열을 공백 없이 소문자 목록으로 바꾼다
         this.providers = java.util.Arrays.stream((providers == null ? "anthropic" : providers).split(","))
                 .map(v -> v.trim().toLowerCase())

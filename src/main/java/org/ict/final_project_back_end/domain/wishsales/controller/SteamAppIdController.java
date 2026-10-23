@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 // [추가] 게임 이름으로 스팀 appid 찾기 API.
-// GET /api/games/resolve-appid?name=ELDEN%20RING
-// /api/games/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
+// GET /api/wishsales/resolve-appid?name=ELDEN%20RING
+// /api/wishsales/** 는 로그인 없이 허용되어 있어서 보안 설정을 바꾸지 않는다.
 @RestController
-@RequestMapping("/api/games")
+@RequestMapping("/api/wishsales")
 public class SteamAppIdController {
     private final SteamAppIdResolver resolver;
 

@@ -52,7 +52,7 @@ public class AiSummaryService {
         for (Long id : ids) {
             Cached c = cache.get(id);
             if (c != null && System.currentTimeMillis() - c.savedAt() < TTL_MS) {
-                result.put(id, new AiSummaryItem(id, c.sentence(), "AI"));
+                result.put(id, new AiSummaryItem(id, stripVerdictPrefix(c.sentence()), "AI"));
                 continue;
             }
             // 2) 나머지는 판단을 받아서 모두 AI에 보낸다.
@@ -75,7 +75,7 @@ public class AiSummaryService {
             BuyAdviceResponse r = needAi.get(i);
             if (sentences != null && i < sentences.size()
                     && sentences.get(i) != null && !sentences.get(i).isBlank()) {
-                String s = sentences.get(i);
+                String s = stripVerdictPrefix(sentences.get(i));
                 cache.put(r.appId(), new Cached(s, System.currentTimeMillis()));
                 result.put(r.appId(), new AiSummaryItem(r.appId(), s, "AI"));
             } else {
@@ -97,5 +97,14 @@ public class AiSummaryService {
         }
 
         return new AiSummaryResponse(items, cooldown, message);
+    }
+
+    // [추가] AI가 문장 앞에 판단 코드(BUY:, WAIT:, UNKNOWN: 등)를 붙이는 경우가 있어서 떼어낸다
+    private static final java.util.regex.Pattern VERDICT_PREFIX =
+            java.util.regex.Pattern.compile("^\\s*(BUY|WAIT|UNKNOWN|NO_WINDOW|INSUFFICIENT|NEW)\\s*[:：,，\\-–—]\\s*", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    static String stripVerdictPrefix(String s) {
+        if (s == null) return null;
+        return VERDICT_PREFIX.matcher(s).replaceFirst("");
     }
 }
