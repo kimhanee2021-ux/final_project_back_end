@@ -128,7 +128,7 @@ public class GeminiCoachClient implements CoachAiClient {
 
   // Gemini generateContent를 한 번 부르고 응답 본문을 돌려준다 (혼잡하면 잠깐 기다렸다 다시 시도).
   // 코치 답변(reply)과 분석 한마디(GeminiInsightClient)가 같은 키·모델·오류 처리를 쓰도록 호출만 따로 뺐다.
-  byte[] generate(Map<String, Object> body) {
+  public byte[] generate(Map<String, Object> body) {
     if (apiKey == null || apiKey.isBlank() || !model.matches("[a-zA-Z0-9._-]{1,100}")) {
       throw AiCoachException.notConfigured();
     }
@@ -175,6 +175,9 @@ public class GeminiCoachClient implements CoachAiClient {
   static boolean isBusy(int status) {
     return status == 500 || status == 502 || status == 503 || status == 504;
   }
+
+  /** Requested model identifier for other domain adapters using this transport. Never exposes the key. */
+  public String modelName() { return model; }
 
   Map<String, Object> requestBody(Map<String, Object> facts, List<CoachChatRequest.Turn> history, String message)
       throws JsonProcessingException {

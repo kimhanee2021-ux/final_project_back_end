@@ -50,3 +50,66 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// Explicit, limited news collection; kept out of the web application's startup and bootJar.
+sourceSets {
+    newsCollector {
+        java.srcDir 'scripts/game-news/java'
+        compileClasspath += sourceSets.main.output + configurations.runtimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+tasks.register('collectGameNews', JavaExec) {
+    group = 'application'
+    description = 'Collect official Steam news for existing games (-PnewsAppIds=570,730 -PnewsCount=5)'
+    classpath = sourceSets.newsCollector.runtimeClasspath
+    mainClass = 'org.ict.tools.gamenews.GameNewsCollectCommand'
+    def newsAppIds = providers.gradleProperty('newsAppIds')
+    def newsCount = providers.gradleProperty('newsCount').orElse('20')
+    doFirst {
+        if (!newsAppIds.isPresent()) {
+            throw new GradleException('Specify -PnewsAppIds=570,730 (1-20 existing games)')
+        }
+        args = [newsAppIds.get(), newsCount.get()]
+    }
+}
+
+['briefGameNews': 'brief', 'syncGameNews': 'sync'].each { taskName, mode ->
+    tasks.register(taskName, JavaExec) {
+        group = 'application'
+        description = 'Generate Korean briefings for stored news; sync also collects Steam news first'
+        classpath = sourceSets.newsCollector.runtimeClasspath
+        mainClass = 'org.ict.tools.gamenews.GameNewsBriefCommand'
+        def newsAppIds = providers.gradleProperty('newsAppIds')
+        def newsCount = providers.gradleProperty('newsCount').orElse('20')
+        doFirst {
+            if (!newsAppIds.isPresent()) throw new GradleException('Specify -PnewsAppIds=570,730 (1-20 existing games)')
+            args = [mode, newsAppIds.get(), newsCount.get()]
+        }
+    }
+}
+
+tasks.register('verifyGameNewsApi', JavaExec) {
+    group = 'verification'
+    description = 'Read-only HTTP checks against stored briefings (-PnewsAppIds=570,730,440)'
+    classpath = sourceSets.newsCollector.runtimeClasspath
+    mainClass = 'org.ict.tools.gamenews.GameNewsApiVerifyCommand'
+    def newsAppIds = providers.gradleProperty('newsAppIds')
+    doFirst {
+        if (!newsAppIds.isPresent()) throw new GradleException('Specify -PnewsAppIds=570,730,440')
+        args = [newsAppIds.get()]
+    }
+}
+
+tasks.register('verifyGameNewsSchedule', JavaExec) {
+    group = 'verification'
+    description = 'Make selected games due and verify two real scheduled collection/briefing cycles'
+    classpath = sourceSets.newsCollector.runtimeClasspath
+    mainClass = 'org.ict.tools.gamenews.GameNewsScheduleVerifyCommand'
+    def newsAppIds = providers.gradleProperty('newsAppIds')
+    doFirst {
+        if (!newsAppIds.isPresent()) throw new GradleException('Specify -PnewsAppIds=570,730,440')
+        args = [newsAppIds.get()]
+    }
+}

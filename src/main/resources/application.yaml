@@ -38,6 +38,15 @@ steam:
 
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
+  news:
+    sync:
+      enabled: ${NEWS_SYNC_ENABLED:false}
+      app-ids: ${NEWS_SYNC_APP_IDS:570,730,440}
+      news-count: ${NEWS_SYNC_NEWS_COUNT:5}
+      briefing-batch-size: ${NEWS_SYNC_BRIEFING_BATCH_SIZE:5}
+      poll-interval: ${NEWS_SYNC_POLL_INTERVAL:PT5M}
+      initial-delay: ${NEWS_SYNC_INITIAL_DELAY:PT30S}
+      request-delay-ms: ${NEWS_SYNC_REQUEST_DELAY_MS:1000}
   rank:
     # 조회는 항상 제공하며, 저장과 정기 수집은 명시적으로 켠 경우에만 실행한다.
     sync-enabled: ${RANK_SYNC_ENABLED:false}
