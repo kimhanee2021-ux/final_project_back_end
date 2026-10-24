@@ -17,8 +17,8 @@ public final class NewsVoiceRules {
   }
   static {
     WORDS.put("NOTICE", "공지(?:사항)?|운영\\s*(?:안내|소식)");
-    WORDS.put("PATCH", "업데이트|패치|밸런스|업뎃");
-    WORDS.put("EVENT", "이벤트|행사");
+    WORDS.put("PATCH", "업데이트|패치|밸런스|업뎃|(?i:\\b(?:updates?|patch(?:es)?|balance)\\b)");
+    WORDS.put("EVENT", "이벤트|행사|(?i:\\bevents?\\b)");
     WORDS.put("MAINTENANCE", "점검|장애");
     WORDS.put("DEV_NEWS", "개발\\s*(?:소식|뉴스|일지)|개발");
     WORDS.put("OTHER", "기타|그\\s*밖의\\s*소식");
@@ -60,9 +60,11 @@ public final class NewsVoiceRules {
       if (Pattern.compile(entry.getValue()).matcher(text).find()) categories.add(entry.getKey());
       rest = rest.replaceAll(entry.getValue(), " ");
     }
-    String allPattern = "전체(?:\\s*(?:소식|뉴스))?|모든\\s*(?:소식|뉴스)";
+    String allPattern = "전체(?:\\s*(?:소식|뉴스))?|모든\\s*(?:소식|뉴스)|(?i:\\ball\\s+news\\b)";
     boolean all = Pattern.compile(allPattern).matcher(text).find();
     rest = rest.replaceAll(allPattern, " ")
+        .replaceAll("(?i)^(?:please\\s+)?(?:show|tell|give)\\s+me\\s+", " ")
+        .replaceAll("(?i)\\b(?:news|please)\\b", " ")
         .replaceAll("(?:소식|뉴스|브리핑)(?:을|를|이|가|은|는)?", " ")
         .replaceAll("(?:알려|읽어|들려|보여|찾아|검색해|말해)(?:\\s*줘|\\s*주세요|\\s*줄래)?$", " ")
         .replaceAll("\\s+", " ").strip();

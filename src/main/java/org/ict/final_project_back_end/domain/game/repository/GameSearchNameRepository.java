@@ -10,6 +10,25 @@ import jakarta.persistence.QueryHint;
 import org.springframework.data.repository.query.Param;
 
 public interface GameSearchNameRepository extends JpaRepository<GameSearchName, Long> {
+  interface NameRow { Long getAppId(); String getName(); String getSearchName(); }
+  @Query("""
+      select g.appId as appId, g.name as name, n.normalizedName as searchName
+      from GameSearchName n join n.game g where n.active = true
+        and length(n.normalizedName) between :minimum and :maximum
+        and (n.normalizedName like :prefix escape '!' or n.normalizedName like :suffix escape '!')
+      order by n.normalizedName, g.appId
+      """)
+  @QueryHints(@QueryHint(name = "jakarta.persistence.query.timeout", value = "2000"))
+  List<NameRow> nearby(@Param("minimum") int minimum, @Param("maximum") int maximum,
+      @Param("prefix") String prefix, @Param("suffix") String suffix, Pageable limit);
+  @Query("""
+      select distinct g.appId as appId, g.name as name from GameSearchName n join n.game g
+      where n.active = true
+        and replace(replace(replace(n.normalizedName, ' ', ''), '-', ''), ':', '') = :key
+      order by g.name, g.appId
+      """)
+  @QueryHints(@QueryHint(name = "jakarta.persistence.query.timeout", value = "2000"))
+  List<Candidate> compact(@Param("key") String key, Pageable limit);
   interface Candidate { Long getAppId(); String getName(); }
   @Query("select n from GameSearchName n join fetch n.game g where g.appId in :ids")
   List<GameSearchName> forGames(@Param("ids") List<Long> ids);

@@ -41,6 +41,15 @@ public class GameResolutionService {
     return validated(Long.toString(sessions.select(owner, body.version(), body.candidateSetToken(), body.selectedCandidateIndex())));
   }
   public void clear(String owner) { sessions.clear(owner); }
+  public Response offerCandidates(List<GameNameResolver.Candidate> candidates, long version, String owner, boolean hasMore) {
+    sessions.clear(owner);
+    if (candidates.isEmpty()) return new Response("NOT_FOUND", null, null, null, null, List.of(), null, false,
+        "게임을 확정하지 못했어요. 정식 게임명이나 Steam 게임 번호로 다시 말씀해 주세요.");
+    var visible = List.copyOf(candidates.subList(0, Math.min(5, candidates.size())));
+    String token = sessions.issue(owner, version, visible);
+    return new Response("CHOOSE_GAME", null, null, null, null, visible, token, hasMore || candidates.size() > 5,
+        "어떤 게임을 말씀하셨나요? 후보 번호나 더 구체적인 게임명을 말씀해 주세요.");
+  }
   public Response validated(String id) {
     var game = validator.require(id);
     Status policy = support.findById(game.getAppId()).map(s -> s.status()).orElse(Status.UNKNOWN);

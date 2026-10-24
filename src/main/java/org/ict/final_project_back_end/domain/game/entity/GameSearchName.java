@@ -27,6 +27,9 @@ public class GameSearchName {
   public Long appId() { return game.getAppId(); }
   public String normalizedName() { return normalizedName; }
   public Kind kind() { return kind; }
+  public String displayName() { return displayName; }
+  public String source() { return source; }
+  public boolean active() { return active; }
   public void canonical(String displayName) {
     this.displayName = displayName; this.kind = Kind.CANONICAL; this.source = "games"; this.active = !normalizedName.isBlank();
   }

@@ -27,7 +27,7 @@ class GameSearchCatalogSyncIntegrationTest {
     em.createQuery("update Game g set g.name='Now Named 2' where g.appId=990002").executeUpdate(); em.clear();
     sync.synchronize(); em.flush();
     assertTrue(resolver.resolve("Now Named 2").autoSelect());
-    assertEquals(1, names.forGames(java.util.List.of(990002L)).size());
+    assertTrue(names.forGames(java.util.List.of(990002L)).stream().anyMatch(n -> n.kind() == GameSearchName.Kind.CANONICAL));
   }
   @Test void newGamesRenamesAndDeletionNeedNoGameSpecificCode() {
     em.persist(Game.builder().appId(990001L).name("Original 2").build()); em.flush();

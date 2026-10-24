@@ -1,6 +1,8 @@
 package org.ict.final_project_back_end.domain.game.service;
 
 import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.io.ClassPathResource;
 import org.ict.final_project_back_end.domain.game.entity.*;
 import org.ict.final_project_back_end.domain.game.repository.*;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,6 +16,16 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 @ConditionalOnProperty(name = "app.game-search.sync-enabled", havingValue = "true", matchIfMissing = true)
 public class GameSearchCatalogSync {
+  private record AliasSeed(String canonical, List<String> aliases) {}
+  private final Map<String, List<String>> aliasSeeds = loadAliasSeeds();
+  private Map<String, List<String>> loadAliasSeeds() {
+    try (var in = new ClassPathResource("game-voice-names.json").getInputStream()) {
+      Map<String, List<String>> result = new HashMap<>();
+      for (var seed : new ObjectMapper().readValue(in, AliasSeed[].class))
+        result.put(GameNameNormalizer.normalize(seed.canonical()), seed.aliases());
+      return result;
+    } catch (java.io.IOException error) { throw new IllegalStateException("Could not load supplemental catalog aliases", error); }
+  }
   private final GameRepository games;
   private final GameSearchNameRepository names;
   private final TransactionTemplate transactions;
@@ -46,6 +58,19 @@ public class GameSearchCatalogSync {
       var matching = rows.stream().filter(n -> n.normalizedName().equals(normalized)).findFirst();
       if (matching.isPresent()) matching.get().canonical(game.getName());
       else names.save(new GameSearchName(game, game.getName(), normalized, GameSearchName.Kind.CANONICAL, "games"));
+      Map<String, String> desired = new LinkedHashMap<>();
+      for (String alias : aliasSeeds.getOrDefault(normalized, List.of()))
+        desired.put(GameNameNormalizer.normalize(alias), "catalog-localized");
+      List<String> allNames = new ArrayList<>(); allNames.add(game.getName());
+      rows.stream().filter(n -> n.kind() == GameSearchName.Kind.ALIAS && !n.source().startsWith("catalog-"))
+          .forEach(n -> allNames.add(n.displayName()));
+      for (String name : allNames) for (String abbreviation : GameCatalogNameForms.abbreviations(name))
+        desired.putIfAbsent(abbreviation, "catalog-acronym");
+      desired.remove(normalized);
+      rows.stream().filter(n -> n.source().startsWith("catalog-") && !desired.containsKey(n.normalizedName())).forEach(names::delete);
+      Set<String> existingKeys = new HashSet<>(); rows.forEach(n -> existingKeys.add(n.normalizedName()));
+      for (var alias : desired.entrySet()) if (!existingKeys.contains(alias.getKey()))
+        names.save(new GameSearchName(game, alias.getKey(), alias.getKey(), GameSearchName.Kind.ALIAS, alias.getValue()));
     }
   }
 }

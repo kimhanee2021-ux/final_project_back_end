@@ -12,8 +12,9 @@ public class GameNewsVoiceIntentService {
   private final GameResolutionService games;
   private final NewsVoiceIntentAiClient ai;
   private final NewsVoiceAiLimits limits;
-  public GameNewsVoiceIntentService(GameResolutionService games, NewsVoiceIntentAiClient ai, NewsVoiceAiLimits limits) {
-    this.games = games; this.ai = ai; this.limits = limits;
+  private final GameCatalogVoiceResolver catalog;
+  public GameNewsVoiceIntentService(GameResolutionService games, NewsVoiceIntentAiClient ai, NewsVoiceAiLimits limits, GameCatalogVoiceResolver catalog) {
+    this.games = games; this.ai = ai; this.limits = limits; this.catalog = catalog;
   }
   public Response interpret(Request request, String owner, String remote) {
     if (request.transcript() == null || request.transcript().isBlank() || request.transcript().length() > 500
@@ -81,7 +82,7 @@ public class GameNewsVoiceIntentService {
     boolean all = providedCategory ? slots.allCategories() : draftCategory && context.allCategories();
     if (slots.multipleCategories()) { category = null; all = false; }
     GameResolutionService.Response game = directGame;
-    if (game == null && slots.gameQuery() != null) game = games.resolve(new GameResolutionService.Request(slots.gameQuery(), null, null, null, request.version()), owner);
+    if (game == null && slots.gameQuery() != null) game = catalog.resolve(slots.gameQuery(), request.transcript(), aiContext, request.version(), owner, remote);
     else if (game == null && currentGame != null) game = currentGame;
     if (game == null) return clarifyGame(category, all, "어떤 게임의 소식이 궁금한가요? 게임명을 말씀해 주세요.");
     return selected(game, category, all, request.version(), slots.multipleCategories());
@@ -89,7 +90,7 @@ public class GameNewsVoiceIntentService {
   private Response selected(GameResolutionService.Response game, String category, boolean all, long version, boolean multiple) {
     if (game.action().equals("NOT_FOUND")) return clarifyGame(category, all, game.message());
     if (game.action().equals("CHOOSE_GAME")) return new Response("CHOOSE_GAME", null, null, category, all, "GAME",
-        game.candidates(), game.candidateSetToken(), version, game.hasMore(), null, null, "검색된 후보에서 게임을 선택해 주세요.");
+        game.candidates(), game.candidateSetToken(), version, game.hasMore(), null, null, game.message());
     if (category == null && !all) return new Response("CLARIFY", game.appId(), game.name(), null, false, "CATEGORY",
         List.of(), null, null, false, game.support(), game.briefing(), multiple
           ? "한 번에 한 분류를 골라 주세요. 예를 들어 패치 또는 이벤트라고 말씀해 주세요."
