@@ -47,4 +47,15 @@ public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificat
 
   @Query("select g.appId as appId, g.name as name, g.genre as genre, g.thumbnailUrl as thumbnailUrl from Game g where g.appId = :appId")
   Optional<BbsGameRow> findForBbs(@Param("appId") long appId);
+
+  // Resolve a spoken title only when exactly one existing game or active alias matches.
+  @Query("""
+      select g.appId as appId, g.name as name, g.genre as genre, g.thumbnailUrl as thumbnailUrl
+      from Game g where g.appId = :appId or lower(g.name) = :query
+         or exists (select n.id from GameSearchName n where n.game = g and n.active = true and n.normalizedName = :query)
+      order by g.appId
+      """)
+  @org.springframework.data.jpa.repository.QueryHints(
+      @jakarta.persistence.QueryHint(name = "jakarta.persistence.query.timeout", value = "3000"))
+  List<BbsGameRow> findExactForBbs(@Param("query") String query,@Param("appId") Long appId,Pageable pageable);
 }

@@ -32,4 +32,13 @@ public class BbsGameSearchService {
     if (appId <= 0 || appId > 0xffffffffL) throw GameSearchException.invalid("올바른 Steam 게임 번호를 입력해 주세요.");
     return games.findForBbs(appId).map(BbsGameResponse::from).orElseThrow(GameNotFoundException::new);
   }
+
+  public java.util.List<BbsGameResponse> exact(String input) {
+    String query=GameNameNormalizer.query(input);
+    Long appId=null;
+    if(query.matches("[0-9]{1,10}")) {
+      long number=Long.parseLong(query);if(number>0 && number<=0xffffffffL) appId=number;
+    }
+    return games.findExactForBbs(query,appId,PageRequest.of(0,2)).stream().map(BbsGameResponse::from).toList();
+  }
 }
