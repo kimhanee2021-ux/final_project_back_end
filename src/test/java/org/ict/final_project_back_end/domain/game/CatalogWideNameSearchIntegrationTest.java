@@ -22,12 +22,22 @@ class CatalogWideNameSearchIntegrationTest {
   @Autowired GameNameResolver resolver;
   @Autowired GameVoiceLexicon vocabulary;
   @Autowired TransactionTemplate tx;
+  @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
   Game add(long id, String name, String korean) {
     var game = Game.builder().appId(id).name(name).build(); em.persist(game);
     if (korean != null) em.persist(new GameSearchName(game, korean, GameNameNormalizer.normalize(korean), GameSearchName.Kind.ALIAS, "localized-import"));
     return game;
   }
   void sync() { em.flush(); new GameSearchCatalogSync(games, aliases, tx).synchronize(); em.flush(); }
+  @Test void existingNullSearchKeysAreBackfilledInBulkBeforeIndexedLookup() {
+    add(800041, "Astral: Harbour-8", "아스트럴 하버 8"); sync();
+    jdbc.update("update game_search_names set compact_name=null where app_id=?", 800041L);
+    em.clear();
+    new GameSearchCatalogSync(games, aliases, tx, jdbc).synchronize(); em.flush(); em.clear();
+    assertEquals(0, jdbc.queryForObject("select count(*) from game_search_names where compact_name is null", Integer.class));
+    assertEquals(800041, resolver.resolve("AstralHarbour8").candidates().getFirst().appId());
+    assertTrue(resolver.resolve("아스트럴 하버 8").autoSelect());
+  }
   @Test void arbitraryNewCatalogGameSupportsKoreanEnglishAndGeneratedAcronymWithoutCodeChanges() {
     add(800001, "Astral Harbour 4", "아스트럴 하버 4"); sync();
     assertTrue(resolver.resolve("아스트럴 하버 4").autoSelect());

@@ -16,5 +16,15 @@ public final class NewsVoiceIntent {
       String awaiting, List<GameNameResolver.Candidate> candidates, String candidateSetToken,
       Long candidateVersion, boolean hasMore, String support, String briefing, String message) {}
   public record Slots(String gameQuery, String category, boolean allCategories, boolean multipleCategories,
-      boolean useCurrentGame, String command) {}
+      boolean useCurrentGame, String command, List<String> gameQueries, boolean gameAmbiguous) {
+    public Slots(String gameQuery, String category, boolean allCategories, boolean multipleCategories,
+        boolean useCurrentGame, String command) {
+      this(gameQuery, category, allCategories, multipleCategories, useCurrentGame, command, List.of(), false);
+    }
+    public Slots(String gameQuery, String category, boolean allCategories, boolean multipleCategories,
+        boolean useCurrentGame, String command, List<String> gameQueries) {
+      this(gameQuery, category, allCategories, multipleCategories, useCurrentGame, command, gameQueries, false);
+    }
+    public Slots { gameQueries = gameQueries == null ? List.of() : List.copyOf(gameQueries); }
+  }
 }

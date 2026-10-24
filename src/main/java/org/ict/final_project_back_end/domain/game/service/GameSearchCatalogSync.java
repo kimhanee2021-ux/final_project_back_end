@@ -29,14 +29,37 @@ public class GameSearchCatalogSync {
   private final GameRepository games;
   private final GameSearchNameRepository names;
   private final TransactionTemplate transactions;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbc;
   public GameSearchCatalogSync(GameRepository games, GameSearchNameRepository names, TransactionTemplate transactions) {
-    this.games = games; this.names = names; this.transactions = transactions;
+    this(games, names, transactions, null);
+  }
+  @org.springframework.beans.factory.annotation.Autowired
+  public GameSearchCatalogSync(GameRepository games, GameSearchNameRepository names, TransactionTemplate transactions,
+      org.springframework.jdbc.core.JdbcTemplate jdbc) {
+    this.games = games; this.names = names; this.transactions = transactions; this.jdbc = jdbc;
+  }
+  private record MissingKey(long id, String name) {}
+  private void backfillSearchKeys() {
+    if (jdbc == null) return;
+    while (true) {
+      var rows = jdbc.query("select id, normalized_name from game_search_names where compact_name is null order by id limit 500",
+          (rs, row) -> new MissingKey(rs.getLong(1), rs.getString(2)));
+      if (rows.isEmpty()) return;
+      StringBuilder sql = new StringBuilder("update game_search_names set compact_name = case id ");
+      List<Object> args = new ArrayList<>();
+      for (var row : rows) { sql.append("when ? then ? "); args.add(row.id()); args.add(GameVoiceLexicon.key(row.name())); }
+      sql.append("end where compact_name is null and id in (").append(String.join(",", Collections.nCopies(rows.size(), "?"))).append(")");
+      rows.forEach(row -> args.add(row.id()));
+      jdbc.update(sql.toString(), args.toArray());
+      GameSearchName.searchKeysChanged();
+    }
   }
   // 초기 적재가 끝난 ApplicationReadyEvent 이후 실행. 별도 뉴스 수집은 하지 않는다.
   @EventListener(ApplicationReadyEvent.class)
   public void initialize() { synchronize(); }
   @Scheduled(fixedDelayString = "${app.game-search.refresh-ms:300000}", initialDelayString = "${app.game-search.refresh-ms:300000}")
   public synchronized void synchronize() {
+    backfillSearchKeys();
     long after = 0;
     while (true) {
       List<Long> ids = games.findAppIdsAfter(after, PageRequest.of(0, 500));
@@ -47,6 +70,7 @@ public class GameSearchCatalogSync {
   }
   private void syncBatch(List<Long> ids) {
     var existing = names.forGames(ids);
+    existing.forEach(GameSearchName::refreshSearchKey);
     Map<Long, List<GameSearchName>> byGame = new HashMap<>();
     existing.forEach(n -> byGame.computeIfAbsent(n.appId(), id -> new ArrayList<>()).add(n));
     for (Game game : games.findAllById(ids)) {

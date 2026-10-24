@@ -10,6 +10,18 @@ import jakarta.persistence.QueryHint;
 import org.springframework.data.repository.query.Param;
 
 public interface GameSearchNameRepository extends JpaRepository<GameSearchName, Long> {
+  interface RankedCandidate extends Candidate { Integer getMatchRank(); }
+  @Query("""
+      select g.appId as appId, g.name as name,
+        min(case when n.normalizedName = :original and n.kind = :canonical then 0
+                 when n.normalizedName = :original then 1 else 2 end) as matchRank
+      from GameSearchName n join n.game g
+      where n.active = true and n.compactName = :key
+      group by g.appId, g.name order by matchRank, g.name, g.appId
+      """)
+  @QueryHints(@QueryHint(name = "jakarta.persistence.query.timeout", value = "2000"))
+  List<RankedCandidate> indexedExact(@Param("key") String key, @Param("original") String original,
+      @Param("canonical") GameSearchName.Kind canonical, Pageable limit);
   interface NameRow { Long getAppId(); String getName(); String getSearchName(); }
   @Query("""
       select g.appId as appId, g.name as name, n.normalizedName as searchName
@@ -24,7 +36,7 @@ public interface GameSearchNameRepository extends JpaRepository<GameSearchName, 
   @Query("""
       select distinct g.appId as appId, g.name as name from GameSearchName n join n.game g
       where n.active = true
-        and replace(replace(replace(n.normalizedName, ' ', ''), '-', ''), ':', '') = :key
+        and n.compactName = :key
       order by g.name, g.appId
       """)
   @QueryHints(@QueryHint(name = "jakarta.persistence.query.timeout", value = "2000"))
