@@ -16,3 +16,8 @@ steam:
   api-key: unused-test-key
 app:
   frontend-base-url: http://localhost:9191
+  recommend:
+    base-url: http://localhost:8000
+    timeout-seconds: 30
+    new-slots: 3
+    cache-ttl-hours: 24

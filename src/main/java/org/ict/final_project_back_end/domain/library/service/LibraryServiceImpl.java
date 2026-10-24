@@ -8,6 +8,7 @@ import org.ict.final_project_back_end.domain.library.dto.LibraryGameResponse;
 import org.ict.final_project_back_end.domain.library.dto.SteamOwnedGamesResponse;
 import org.ict.final_project_back_end.domain.library.entity.LibraryGame;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
+import org.ict.final_project_back_end.domain.recommendation.service.RecommendationStore;
 import org.ict.final_project_back_end.domain.user.entity.User;
 import org.ict.final_project_back_end.domain.user.exception.SteamNotLinkedException;
 import org.ict.final_project_back_end.domain.user.exception.UserNotFoundException;
@@ -33,15 +34,18 @@ public class LibraryServiceImpl implements LibraryService {
   private final LibraryGameRepository libraryGameRepository;
   private final GameRepository gameRepository;
   private final SteamLibraryClient steamLibraryClient;
+  private final RecommendationStore recommendationStore;
 
   public LibraryServiceImpl(UserRepository userRepository,
                             LibraryGameRepository libraryGameRepository,
                             GameRepository gameRepository,
-                            SteamLibraryClient steamLibraryClient) {
+                            SteamLibraryClient steamLibraryClient,
+                            RecommendationStore recommendationStore) {
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.gameRepository = gameRepository;
     this.steamLibraryClient = steamLibraryClient;
+    this.recommendationStore = recommendationStore;
   }
 
   @Override
@@ -62,6 +66,7 @@ public class LibraryServiceImpl implements LibraryService {
         .map(steamGame -> upsert(user, existingByAppId.get(steamGame.appid()), steamGame))
         .toList();
     libraryGameRepository.saveAll(toSave);
+    recommendationStore.invalidate(userId); // 보유 게임·플레이 시간이 바뀌었으니 저장된 추천은 더는 맞지 않는다
 
     return libraryGameRepository.findAllByUserIdOrderByNameAsc(userId).stream()
         .map(LibraryGameResponse::from)

@@ -53,6 +53,15 @@ app:
       groq-model: ${GROQ_PC_MODEL:qwen/qwen3.8-27b}
       groq-min-interval-seconds: ${GROQ_PC_MIN_INTERVAL_SECONDS:0}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  #게임 추천: 모델 서버(final_project_fast_api)는 내부망에서만 열고 이 서버만 호출한다
+  recommend:
+    base-url: ${RECOMMEND_BASE_URL:http://localhost:8000}
+    #모델 추론이 있어 일반 요청보다 오래 걸릴 수 있다
+    timeout-seconds: ${RECOMMEND_TIMEOUT_SECONDS:30}
+    #추천 목록 중 학습에 없던 신작으로 채울 칸 수 (0이면 신작 칸 없음)
+    new-slots: ${RECOMMEND_NEW_SLOTS:3}
+    #저장된 추천 목록을 다시 계산하지 않고 쓰는 시간
+    cache-ttl-hours: ${RECOMMEND_CACHE_TTL_HOURS:24}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
     games:

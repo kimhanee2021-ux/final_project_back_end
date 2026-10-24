@@ -4,6 +4,7 @@ import org.ict.final_project_back_end.domain.budget.repository.BudgetRepository;
 import org.ict.final_project_back_end.domain.library.repository.LibraryGameRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.GameLicenseRepository;
 import org.ict.final_project_back_end.domain.purchase.repository.PurchaseTransactionRepository;
+import org.ict.final_project_back_end.domain.recommendation.service.RecommendationStore;
 import org.ict.final_project_back_end.domain.user.dto.UserResponse;
 import org.ict.final_project_back_end.domain.user.dto.UserUpdateRequest;
 import org.ict.final_project_back_end.domain.user.entity.User;
@@ -26,13 +27,16 @@ public class UserServiceImpl implements UserService {
   private final GameLicenseRepository gameLicenseRepository;
   private final BudgetRepository budgetRepository;
   private final PasswordEncoder passwordEncoder;
+  private final RecommendationStore recommendationStore;
 
   public UserServiceImpl(UserRepository userRepository,
                          LibraryGameRepository libraryGameRepository,
                          PurchaseTransactionRepository purchaseTransactionRepository,
                          GameLicenseRepository gameLicenseRepository,
                          BudgetRepository budgetRepository,
-                         PasswordEncoder passwordEncoder) {
+                         PasswordEncoder passwordEncoder,
+                         RecommendationStore recommendationStore) {
+    this.recommendationStore = recommendationStore;
     this.userRepository = userRepository;
     this.libraryGameRepository = libraryGameRepository;
     this.purchaseTransactionRepository = purchaseTransactionRepository;
@@ -87,6 +91,7 @@ public class UserServiceImpl implements UserService {
   public void deleteUser(Long userId) {
     User user = findUser(userId);
     libraryGameRepository.deleteByUserId(userId);
+    recommendationStore.invalidate(userId);
     gameLicenseRepository.deleteByUserId(userId);
     budgetRepository.deleteByUserId(userId);
     purchaseTransactionRepository.deleteItemsByUserId(userId);
@@ -101,6 +106,7 @@ public class UserServiceImpl implements UserService {
   public void unlinkSteam(Long userId) {
     User user = findUser(userId);
     libraryGameRepository.deleteByUserId(userId);
+    recommendationStore.invalidate(userId);
     user.setSteamId(null);
   }
 
