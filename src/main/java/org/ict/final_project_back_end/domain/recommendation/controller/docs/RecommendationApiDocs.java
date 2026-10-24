@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.ict.final_project_back_end.domain.recommendation.dto.RecommendationResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,6 +38,6 @@ public interface RecommendationApiDocs {
       @Parameter(hidden = true)
       @AuthenticationPrincipal Long userId,
       @Parameter(description = "추천 개수 (1~50, 기본 10)")
-      int limit
+      @Min(1) @Max(50) int limit
   );
 }

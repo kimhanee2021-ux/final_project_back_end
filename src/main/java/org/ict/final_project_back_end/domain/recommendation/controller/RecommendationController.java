@@ -1,7 +1,5 @@
 package org.ict.final_project_back_end.domain.recommendation.controller;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import org.ict.final_project_back_end.domain.recommendation.controller.docs.RecommendationApiDocs;
 import org.ict.final_project_back_end.domain.recommendation.dto.RecommendationResponse;
 import org.ict.final_project_back_end.domain.recommendation.service.RecommendationService;
@@ -20,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecommendationController implements RecommendationApiDocs {
 
   private static final int DEFAULT_LIMIT = 10;
-  private static final int MAX_LIMIT = 50;
 
   private final RecommendationService recommendationService;
 
@@ -33,7 +30,7 @@ public class RecommendationController implements RecommendationApiDocs {
   @GetMapping
   public ResponseEntity<RecommendationResponse> getRecommendations(
       @AuthenticationPrincipal Long userId,
-      @RequestParam(defaultValue = "" + DEFAULT_LIMIT) @Min(1) @Max(MAX_LIMIT) int limit) {
+      @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
     return ResponseEntity.ok(recommendationService.getRecommendations(userId, limit));
   }
 }

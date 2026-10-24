@@ -32,8 +32,9 @@ public class FastApiRecommendationClient implements RecommendationModelClient {
   public FastApiRecommendationClient(
       @Value("${app.recommend.base-url}") String baseUrl,
       @Value("${app.recommend.timeout-seconds}") long timeoutSeconds) {
+    // 모델 서버(uvicorn)는 HTTP/1.1만 쓴다. JDK 기본값(HTTP/2 업그레이드 시도)이면 POST 본문이 유실된다.
     JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
-        HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build());
     factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
     this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
   }

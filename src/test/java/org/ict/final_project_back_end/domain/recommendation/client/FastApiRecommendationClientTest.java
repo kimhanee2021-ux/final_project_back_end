@@ -12,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 // 실제 모델 서버 대신 가짜 HTTP 서버로 응답 형식({code, error})에 따른 분기를 검증한다
 class FastApiRecommendationClientTest {
@@ -68,6 +70,28 @@ class FastApiRecommendationClientTest {
     respond(502, "<html>Bad Gateway</html>");
 
     assertThrows(RecommendationServerException.class, () -> client.recommend(REQUEST));
+  }
+
+  // JDK 기본값(HTTP/2 업그레이드 시도)이면 uvicorn이 POST 본문을 받지 못한다
+  @Test
+  void sendsPlainHttp11WithBodyAndNoUpgradeHeader() {
+    List<String> seen = new ArrayList<>();
+    server.createContext("/internal/v1/recommendations", exchange -> {
+      seen.add(exchange.getProtocol());
+      seen.add(String.valueOf(exchange.getRequestHeaders().containsKey("Upgrade")));
+      seen.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+      byte[] bytes = "{\"items\":[],\"used_app_ids\":[]}".getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().add("Content-Type", "application/json");
+      exchange.sendResponseHeaders(200, bytes.length);
+      exchange.getResponseBody().write(bytes);
+      exchange.close();
+    });
+
+    client.recommend(REQUEST);
+
+    assertEquals("HTTP/1.1", seen.get(0));
+    assertEquals("false", seen.get(1));
+    assertTrue(seen.get(2).contains("\"limit\":10"));
   }
 
   private void respond(int status, String body) {
