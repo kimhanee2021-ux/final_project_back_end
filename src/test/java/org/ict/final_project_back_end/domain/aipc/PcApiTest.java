@@ -1,6 +1,6 @@
 package org.ict.final_project_back_end.domain.aipc;
 
-import org.ict.final_project_back_end.domain.aipc.client.GeminiPcClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiClient;
 import org.ict.final_project_back_end.domain.aipc.client.PcRequirementsClient;
 import org.ict.final_project_back_end.domain.aipc.dto.*;
 import org.ict.final_project_back_end.domain.aipc.service.*;
@@ -28,7 +28,7 @@ class PcApiTest {
   @Autowired MockMvc mvc;
   @Autowired UserRepository users;
   @Autowired JwtService jwt;
-  @MockitoBean GeminiPcClient gemini;
+  @MockitoBean PcAiClient gemini;
   @MockitoBean PcRequirementsClient requirements;
   @MockitoBean PcPartsService parts;
   String token;

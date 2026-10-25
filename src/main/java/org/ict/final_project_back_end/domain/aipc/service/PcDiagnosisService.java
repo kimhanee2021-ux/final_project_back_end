@@ -2,7 +2,7 @@ package org.ict.final_project_back_end.domain.aipc.service;
 
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
 import org.ict.final_project_back_end.domain.aicommon.service.*;
-import org.ict.final_project_back_end.domain.aipc.client.GeminiPcClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiClient;
 import org.ict.final_project_back_end.domain.aipc.client.PcRequirementsClient;
 import org.ict.final_project_back_end.domain.aipc.dto.*;
 import org.ict.final_project_back_end.domain.aipc.rule.PcAiAssessment;
@@ -33,15 +33,15 @@ public class PcDiagnosisService {
   private static final Set<String> GRADES = Set.of("A", "B", "C", "D", "E", "UNKNOWN");
 
   private final PcPartsService parts;
-  private final GeminiPcClient gemini;
+  private final PcAiClient ai;
   private final AiRateLimit limit;
   private final UserRepository users;
   private final PcRequirementsClient requirements;
 
   public PcDiagnosisService(
-      GeminiPcClient g, AiRateLimit l, UserRepository u, PcRequirementsClient r, PcPartsService p) {
+      PcAiClient g, AiRateLimit l, UserRepository u, PcRequirementsClient r, PcPartsService p) {
     parts = p;
-    gemini = g;
+    ai = g;
     limit = l;
     users = u;
     requirements = r;
@@ -54,7 +54,7 @@ public class PcDiagnosisService {
 
   public String provider(Long id) {
     authenticated(id);
-    return gemini.provider();
+    return ai.provider();
   }
 
   public List<PcRequirementsClient.SearchGame> search(Long id, String keyword) {
@@ -64,14 +64,14 @@ public class PcDiagnosisService {
 
   public PcDiagnosis.Extraction extract(Long id, MultipartFile image, String expectedProvider) {
     authenticated(id);
-    if (!expectedProvider.isBlank() && !expectedProvider.equals(gemini.provider()))
+    if (!expectedProvider.isBlank() && !expectedProvider.equals(ai.provider()))
       throw new AiException(CONFLICT, "AI 공급자가 변경됐어요. 창을 다시 열어 전송 대상을 확인해주세요.");
     byte[] bytes = readImage(image);
     String mime = image.getContentType();
     long started = System.nanoTime();
     limit.begin(id);
     try {
-      return gemini.extract(bytes, mime);
+      return ai.extract(bytes, mime);
     } finally {
       log.info("PC timing phase=photo totalMs={}", elapsedMs(started));
       limit.end(id);
@@ -124,14 +124,14 @@ public class PcDiagnosisService {
     try {
       var games = loadRequirements(request.appIds());
       var offers = PcPartCandidates.includeUnpriced(parts.cachedOffers(id));
-      var answer = gemini.overview(request.specs(), games, offers);
+      var answer = ai.overview(request.specs(), games, offers);
       String grade = answer.path("overallGrade").asText();
       if (!GRADES.contains(grade)) throw new AiException(BAD_GATEWAY, "종합 등급 형식이 올바르지 않아요.");
       if (!"IDENTIFIED_SINGLE".equals(PcHardwarePolicy.gpuIdentity(request.specs()))
           || request.specs().cpuModel() == null
           || request.specs().cpuModel().isBlank()
           || request.specs().ramGB() == null) grade = "UNKNOWN";
-      var explanation = gemini.list(answer, "overallExplanation");
+      var explanation = ai.list(answer, "overallExplanation");
       if (explanation.size() != 4) throw new AiException(BAD_GATEWAY, "종합 설명을 확인하지 못했어요.");
       return new PcDiagnosis.Overview(
           grade,
@@ -140,7 +140,7 @@ public class PcDiagnosisService {
           PcHardwarePolicy.advice(
               request.specs(),
               PcComponentAdviceReader.parse(answer.path("componentAdvice"), offers)),
-          gemini.actualProvider());
+          ai.actualProvider());
     } finally {
       limit.end(id);
     }
@@ -167,7 +167,7 @@ public class PcDiagnosisService {
       stage = "AI_RESPONSE";
       log.info("PC timing phase=cachedPrices ms={}", elapsedMs(phaseStarted));
       phaseStarted = System.nanoTime();
-      var answer = gemini.explainBatch(pc, games, comparisons, offers);
+      var answer = ai.explainBatch(pc, games, comparisons, offers);
       log.info("PC timing phase=ai ms={}", elapsedMs(phaseStarted));
       stage = "COMPONENT_ADVICE";
       var advice =
@@ -203,7 +203,7 @@ public class PcDiagnosisService {
           stage,
           currentAppId,
           failure.getStatus().value(),
-          gemini.actualProvider());
+          ai.actualProvider());
       throw failure;
     } finally {
       log.info("PC timing phase=batch totalMs={}", elapsedMs(started));
@@ -225,7 +225,7 @@ public class PcDiagnosisService {
         var offers = PcPartCandidates.includeUnpriced(parts.cachedOffers(id));
         if (offers == null) offers = List.of();
         stage = "AI_EXPLANATION";
-        var answer = gemini.explain(pc, source, comparison, offers);
+        var answer = ai.explain(pc, source, comparison, offers);
         stage = "RECOMMENDATION_VALIDATION";
         var recommendations =
             PcHardwarePolicy.recommendations(pc, PcAiRecommendations.parse(answer, offers));
@@ -263,27 +263,27 @@ public class PcDiagnosisService {
         game.name(),
         grade,
         comparison.checks(),
-        gemini.explanation(data, "summary", 1000),
+        ai.explanation(data, "summary", 1000),
         List.of(
             resolution(pc, game, data, "FHD", "fhd"),
             resolution(pc, game, data, "QHD", "qhd"),
             resolution(pc, game, data, "4K", "uhd")),
-        gemini.list(data, "settings"),
-        gemini.list(data, "upgradeChecks"),
-        gemini.explanation(data, "limitation", 800),
+        ai.list(data, "settings"),
+        ai.list(data, "upgradeChecks"),
+        ai.explanation(data, "limitation", 800),
         game,
         "READY",
         recommendations,
         advice,
-        gemini.actualProvider(),
-        overall.has("overallExplanation") ? gemini.list(overall, "overallExplanation") : List.of());
+        ai.actualProvider(),
+        overall.has("overallExplanation") ? ai.list(overall, "overallExplanation") : List.of());
   }
 
   private PcDiagnosis.Resolution resolution(
       PcSpecs pc, PcGameRequirements game, JsonNode data, String name, String key) {
     return new PcDiagnosis.Resolution(
         name,
-        gemini.explanation(data, key, 600),
+        ai.explanation(data, key, 600),
         PcFpsEvidence.find(pc, game.appId(), name),
         PcPerformanceTargets.parse(data, key, pc, game));
   }

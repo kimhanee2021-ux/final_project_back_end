@@ -1,7 +1,8 @@
 package org.ict.final_project_back_end.domain.aipc;
 
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
-import org.ict.final_project_back_end.domain.aipc.client.GeminiPcClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiProviderRouter;
 import org.ict.final_project_back_end.domain.aipc.client.GroqPcTransport;
 import org.ict.final_project_back_end.domain.aipc.service.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -94,7 +95,7 @@ class GroqPcTransportTest {
     when(groq.configured()).thenReturn(true);
     when(groq.ask(anyString(), anyList(), anyMap()))
         .thenThrow(new AiException(TOO_MANY_REQUESTS, "test"));
-    var client = new GeminiPcClient("unused", "test", "http://127.0.0.1:1", groq, "groq");
+    var client = new PcAiClient(new PcAiProviderRouter("unused", "test", "http://127.0.0.1:1", groq, "groq"));
     assertEquals("Groq", client.provider());
     assertEquals(
         TOO_MANY_REQUESTS,

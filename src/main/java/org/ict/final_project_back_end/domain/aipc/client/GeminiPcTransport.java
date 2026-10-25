@@ -12,7 +12,7 @@ import java.util.*;
 import org.ict.final_project_back_end.domain.aicommon.client.GeminiSupport;
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
 
-/** PC 기능의 Gemini generateContent 호출과 응답 봉투 해석만 담당한다. 공급자 선택은 GeminiPcClient가 한다. */
+/** PC 기능의 Gemini generateContent 호출과 응답 봉투 해석만 담당한다. 공급자 선택은 PcAiProviderRouter가 한다. */
 public class GeminiPcTransport extends GeminiSupport {
 
   public GeminiPcTransport(String key, String model, String base) {

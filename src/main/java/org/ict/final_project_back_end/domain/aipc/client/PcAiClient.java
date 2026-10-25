@@ -1,120 +1,52 @@
 package org.ict.final_project_back_end.domain.aipc.client;
 
-import org.ict.final_project_back_end.domain.aicommon.client.GeminiSupport;
+import static org.ict.final_project_back_end.domain.aicommon.client.AiAnswerChecks.checkedList;
+import static org.ict.final_project_back_end.domain.aicommon.client.AiAnswerChecks.checkedString;
+import static org.ict.final_project_back_end.domain.aicommon.client.AiAnswerChecks.invalid;
+import static org.ict.final_project_back_end.domain.aipc.client.PcAiPrompts.*;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.*;
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
 import org.ict.final_project_back_end.domain.aipc.dto.*;
 import org.ict.final_project_back_end.domain.aipc.rule.PcFpsEvidence;
 import org.ict.final_project_back_end.domain.aipc.rule.PcHardwarePolicy;
 import org.ict.final_project_back_end.domain.aipc.rule.PcRules;
 import org.ict.final_project_back_end.domain.aipc.rule.PcStorageReading;
-import static org.ict.final_project_back_end.domain.aipc.client.PcAiPrompts.*;
-import static org.springframework.http.HttpStatus.*;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/** PC AI 기능의 진입점. 설정에 따라 Gemini/Groq 중 공급자를 고르고, 지시문을 조립해 받은 답을 검증한다. */
+/**
+ * PC AI 기능의 진입점: 사진 판독 · 게임별 설명 · 종합 평가 · 일괄 설명.
+ * 지시문(PcAiPrompts)과 자료를 조립해 PcAiProviderRouter로 보내고, 받은 답을 검증한다. 공급자 선택은 라우터가 맡는다.
+ */
 @Component
-public class GeminiPcClient extends GeminiSupport {
-  private final GeminiPcTransport geminiTransport;
-  private final GroqPcTransport groq;
-  private final String provider;
+public class PcAiClient {
+  private static final Logger log = LoggerFactory.getLogger(PcAiClient.class);
 
-  public GeminiPcClient(String key, String model, String base) {
-    super(key, model, base);
-    this.geminiTransport = new GeminiPcTransport(key, model, base);
-    this.groq = null;
-    this.provider = "gemini";
+  private final ObjectMapper json = new ObjectMapper();
+  private final PcAiProviderRouter router;
+
+  public PcAiClient(PcAiProviderRouter router) {
+    this.router = router;
   }
 
-  @Autowired
-  public GeminiPcClient(
-      @Value("${app.ai.api-key:}") String key,
-      @Value("${app.ai.pc.model:gemini-3.5-flash-lite}") String model,
-      @Value("${app.ai.base-url:https://generativelanguage.googleapis.com}") String base,
-      GroqPcTransport groq,
-      @Value("${app.ai.pc.provider:auto}") String provider) {
-    super(key, model, base);
-    this.geminiTransport = new GeminiPcTransport(key, model, base);
-    this.groq = groq;
-    this.provider = provider;
-  }
-
-  private final ThreadLocal<String> lastProvider = new ThreadLocal<>();
-
+  // 이번 요청에 실제로 답한 공급자
   public String actualProvider() {
-    return Objects.toString(lastProvider.get(), "");
+    return router.actualProvider();
   }
 
+  // 화면에 보여줄 공급자 구성 이름
   public String provider() {
-    if ("groq".equals(provider)) return "Groq";
-    if (!Set.of("auto", "gemini", "gemini-first").contains(provider))
-      throw new AiException(SERVICE_UNAVAILABLE, "PC AI 공급자 설정을 확인해주세요.");
-    return groq != null && groq.configured()
-        ? ("auto".equals(provider) ? "Groq ↔ Gemini" : "Gemini → Groq")
-        : "Gemini";
-  }
-
-  private JsonNode ask(
-      String instructions, List<Map<String, Object>> parts, Map<String, Object> schema) {
-    return ask(
-        instructions,
-        parts,
-        schema,
-        parts.stream().anyMatch(p -> p.containsKey("text")) ? 2400 : 768);
-  }
-
-  private JsonNode ask(
-      String instructions,
-      List<Map<String, Object>> parts,
-      Map<String, Object> schema,
-      int outputLimit) {
-    lastProvider.remove();
-    String route = provider();
-    if ("Groq".equals(route)) {
-      lastProvider.set("Groq");
-      return parts.stream().anyMatch(p -> p.containsKey("inlineData"))
-          ? groq.ask(instructions, parts, schema)
-          : groq.ask(instructions, parts, schema, outputLimit);
-    }
-    if ("Groq ↔ Gemini".equals(route)
-        && PcAiRouting.preferGroq(instructions, parts, schema, outputLimit)) {
-      try {
-        lastProvider.set("Groq");
-        return groq.ask(instructions, parts, schema, outputLimit);
-      } catch (AiException failure) {
-        if (!Set.of(TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE).contains(failure.getStatus()))
-          throw failure;
-        log.warn(
-            "PC AI fallback: Groq status={} -> Gemini (one attempt)", failure.getStatus().value());
-        lastProvider.set("Gemini");
-        return geminiTransport.ask(instructions, parts, schema, outputLimit);
-      }
-    }
-    try {
-      lastProvider.set("Gemini");
-      return geminiTransport.ask(instructions, parts, schema, outputLimit);
-    } catch (AiException failure) {
-      if (Set.of("Gemini → Groq", "Groq ↔ Gemini").contains(route)
-          && Set.of(TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE).contains(failure.getStatus())) {
-        log.warn(
-            "PC AI fallback: Gemini status={} -> Groq (one attempt)", failure.getStatus().value());
-        lastProvider.set("Groq");
-        return parts.stream().anyMatch(p -> p.containsKey("inlineData"))
-            ? groq.ask(instructions, parts, schema)
-            : groq.ask(instructions, parts, schema, outputLimit);
-      }
-      throw failure;
-    }
+    return router.provider();
   }
 
   public PcDiagnosis.Extraction extract(byte[] image, String mime) {
     var answer =
-        ask(
+        router.ask(
             EXTRACTION_INSTRUCTIONS,
             List.of(
                 Map.of(
@@ -177,7 +109,7 @@ public class GeminiPcClient extends GeminiSupport {
       List<PcPart.Offer> offers) {
     try {
       return applyRuleGrade(
-          ask(
+          router.ask(
               explanationInstructions() + targetInstructions() + componentInstructions(),
               List.of(
                   Map.of(
@@ -245,7 +177,7 @@ public class GeminiPcClient extends GeminiSupport {
                   Map.of("type", "array", "minItems", 4, "maxItems", 4, "items", string()),
                   "componentAdvice",
                   componentAdviceSchema()));
-      return ask(
+      return router.ask(
           OVERVIEW_INSTRUCTIONS + componentInstructions(),
           List.of(
               Map.of(
@@ -269,6 +201,7 @@ public class GeminiPcClient extends GeminiSupport {
     }
   }
 
+  @SuppressWarnings("unchecked")
   public JsonNode explainBatch(
       PcSpecs pc,
       List<PcGameRequirements> games,
@@ -278,7 +211,6 @@ public class GeminiPcClient extends GeminiSupport {
       var entries = new ArrayList<Map<String, Object>>();
       for (int i = 0; i < games.size(); i++) {
         var game = games.get(i);
-        var comparison = comparisons.get(i);
         entries.add(
             Map.of(
                 "appId",
@@ -343,7 +275,7 @@ public class GeminiPcClient extends GeminiSupport {
                                           o.priceKrw() != null && o.priceKrw() > 0))
                               .toList()))));
       var answer =
-          ask(
+          router.ask(
               BATCH_INSTRUCTIONS + targetInstructions() + componentInstructions(),
               parts,
               responseSchema,
@@ -360,6 +292,7 @@ public class GeminiPcClient extends GeminiSupport {
     }
   }
 
+  // 설명 한 칸: max자 이하의 비어 있지 않은 글자, FPS 숫자를 지어내지 않았는지 확인한다
   public String explanation(JsonNode n, String key, int max) {
     JsonNode value = n.path(key);
     if (!value.isTextual() || value.asText().isBlank() || value.asText().length() > max) {

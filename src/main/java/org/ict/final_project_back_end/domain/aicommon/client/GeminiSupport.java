@@ -1,7 +1,5 @@
 package org.ict.final_project_back_end.domain.aicommon.client;
 
-import static org.springframework.http.HttpStatus.*;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.http.*;
@@ -9,6 +7,7 @@ import java.time.Duration;
 import java.util.*;
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
 
+/** Gemini generateContent를 직접 부르는 클라이언트의 공통 설정(키·모델·주소, HTTP 클라이언트)과 답 검증. */
 public abstract class GeminiSupport {
   protected final String key, model, baseUrl;
   protected final ObjectMapper json = new ObjectMapper();
@@ -23,19 +22,14 @@ public abstract class GeminiSupport {
   }
 
   protected String checkedString(JsonNode node, int max, boolean empty) {
-    if (!node.isTextual() || node.asText().length() > max || (!empty && node.asText().isBlank()))
-      throw invalid();
-    return node.asText();
+    return AiAnswerChecks.checkedString(node, max, empty);
   }
 
   protected List<String> checkedList(JsonNode node) {
-    if (!node.isArray() || node.size() > 6) throw invalid();
-    List<String> result = new ArrayList<>();
-    for (var item : node) result.add(checkedString(item, 500, false));
-    return List.copyOf(result);
+    return AiAnswerChecks.checkedList(node);
   }
 
   protected AiException invalid() {
-    return new AiException(BAD_GATEWAY, "AI 답변을 확인하지 못했습니다. 질문을 바꾸거나 다시 시도해주세요.");
+    return AiAnswerChecks.invalid();
   }
 }

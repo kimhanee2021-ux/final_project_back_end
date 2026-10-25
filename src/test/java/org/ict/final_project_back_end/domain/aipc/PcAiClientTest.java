@@ -7,10 +7,11 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import org.ict.final_project_back_end.domain.aicommon.exception.AiException;
-import org.ict.final_project_back_end.domain.aipc.client.GeminiPcClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiClient;
+import org.ict.final_project_back_end.domain.aipc.client.PcAiProviderRouter;
 import org.junit.jupiter.api.*;
 
-class GeminiPcClientTest {
+class PcAiClientTest {
   @Test
   void libraryOverviewUsesAll49GamesInOneIndependentRequest() throws Exception {
     reply =
@@ -77,7 +78,7 @@ class GeminiPcClientTest {
   }
 
   HttpServer server;
-  GeminiPcClient client;
+  PcAiClient client;
   String reply;
   int status;
   String received;
@@ -96,8 +97,9 @@ class GeminiPcClientTest {
         });
     server.start();
     client =
-        new GeminiPcClient(
-            "test-only", "test-model", "http://127.0.0.1:" + server.getAddress().getPort());
+        new PcAiClient(
+            new PcAiProviderRouter(
+                "test-only", "test-model", "http://127.0.0.1:" + server.getAddress().getPort()));
     status = 200;
   }
 
@@ -259,12 +261,13 @@ class GeminiPcClientTest {
                 org.mockito.ArgumentMatchers.anyMap()))
         .thenReturn(extractionReply);
     var routed =
-        new GeminiPcClient(
-            "test-only",
-            "test-model",
-            "http://127.0.0.1:" + server.getAddress().getPort(),
-            groq,
-            "auto");
+        new PcAiClient(
+            new PcAiProviderRouter(
+                "test-only",
+                "test-model",
+                "http://127.0.0.1:" + server.getAddress().getPort(),
+                groq,
+                "auto"));
     status = 429;
     reply = "{}";
     assertEquals("Groq ↔ Gemini", routed.provider());
@@ -283,12 +286,13 @@ class GeminiPcClientTest {
             org.ict.final_project_back_end.domain.aipc.client.GroqPcTransport.class);
     org.mockito.Mockito.when(groq.configured()).thenReturn(true);
     var routed =
-        new GeminiPcClient(
-            "test-only",
-            "test-model",
-            "http://127.0.0.1:" + server.getAddress().getPort(),
-            groq,
-            "auto");
+        new PcAiClient(
+            new PcAiProviderRouter(
+                "test-only",
+                "test-model",
+                "http://127.0.0.1:" + server.getAddress().getPort(),
+                groq,
+                "auto"));
     reply = answer("32");
     assertEquals("Gemini", routed.extract(new byte[] {1}, "image/png").aiProvider());
     org.mockito.Mockito.verify(groq, org.mockito.Mockito.never())
@@ -305,12 +309,13 @@ class GeminiPcClientTest {
             org.ict.final_project_back_end.domain.aipc.client.GroqPcTransport.class);
     org.mockito.Mockito.when(groq.configured()).thenReturn(true);
     var routed =
-        new GeminiPcClient(
-            "test-only",
-            "test-model",
-            "http://127.0.0.1:" + server.getAddress().getPort(),
-            groq,
-            "auto");
+        new PcAiClient(
+            new PcAiProviderRouter(
+                "test-only",
+                "test-model",
+                "http://127.0.0.1:" + server.getAddress().getPort(),
+                groq,
+                "auto"));
     reply = "{}";
     assertThrows(AiException.class, () -> routed.extract(new byte[] {1}, "image/png"));
     org.mockito.Mockito.verify(groq, org.mockito.Mockito.never())
@@ -335,18 +340,14 @@ class GeminiPcClientTest {
                 org.mockito.ArgumentMatchers.anyInt()))
         .thenReturn(expected);
     var routed =
-        new GeminiPcClient(
+        new PcAiProviderRouter(
             "test-only",
             "test-model",
             "http://127.0.0.1:" + server.getAddress().getPort(),
             groq,
             "auto");
-    var method =
-        GeminiPcClient.class.getDeclaredMethod(
-            "ask", String.class, java.util.List.class, java.util.Map.class, int.class);
-    method.setAccessible(true);
-    var parts = java.util.List.of(java.util.Map.of("text", "짧은 자료"));
-    assertEquals(expected, method.invoke(routed, "짧은 설명", parts, java.util.Map.of(), 900));
+    var parts = java.util.List.<java.util.Map<String, Object>>of(java.util.Map.of("text", "짧은 자료"));
+    assertEquals(expected, routed.ask("짧은 설명", parts, java.util.Map.of(), 900));
     assertEquals("Groq", routed.actualProvider());
     assertNull(received);
     org.mockito.Mockito.when(
@@ -357,7 +358,7 @@ class GeminiPcClientTest {
                 org.mockito.ArgumentMatchers.anyInt()))
         .thenThrow(new AiException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "limit"));
     reply = answer("32");
-    method.invoke(routed, "짧은 설명", parts, java.util.Map.of(), 900);
+    routed.ask("짧은 설명", parts, java.util.Map.of(), 900);
     assertEquals("Gemini", routed.actualProvider());
     org.mockito.Mockito.verify(groq, org.mockito.Mockito.times(2))
         .ask(
@@ -370,10 +371,11 @@ class GeminiPcClientTest {
   @Test
   void pcLiteModelUsesMinimalThinkingInsteadOfShrinkingTimeoutOnly() throws Exception {
     client =
-        new GeminiPcClient(
-            "test-only",
-            "gemini-3.5-flash-lite",
-            "http://127.0.0.1:" + server.getAddress().getPort());
+        new PcAiClient(
+            new PcAiProviderRouter(
+                "test-only",
+                "gemini-3.5-flash-lite",
+                "http://127.0.0.1:" + server.getAddress().getPort()));
     reply = answer("32");
     client.extract(new byte[] {1}, "image/png");
     var config = new ObjectMapper().readTree(received).path("generationConfig");
