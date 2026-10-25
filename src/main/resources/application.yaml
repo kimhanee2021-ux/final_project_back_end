@@ -12,11 +12,14 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  sql:
+    init:
+      mode: never
   jpa:
     show-sql: true
     hibernate:
-      # update는 기존 테이블/데이터를 지우지 않고 없는 것만 추가한다
-      ddl-auto: update
+      # 기존 카탈로그를 보존한다. 스키마 변경은 검토한 수동 SQL로만 적용한다.
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: true
@@ -57,7 +60,7 @@ app:
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
     games:
-      enabled: ${SEED_GAMES_ENABLED:true}
+      enabled: ${SEED_GAMES_ENABLED:false}
       chunk-size: ${SEED_GAMES_CHUNK_SIZE:2000}
       writer-threads: ${SEED_GAMES_WRITER_THREADS:4}
     #(선택, 개발용) games 전체의 원화 가격 미리 받기. 보유 게임 가격은 소비 분석 조회 때 자동으로 채워지므로 기본 false
