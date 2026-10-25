@@ -12,10 +12,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -51,8 +49,8 @@ public class GameCsvSeedRunner implements ApplicationRunner {
 
   private static final String INSERT_SQL = """
       INSERT IGNORE INTO games
-        (app_id, name, genre, positive_rate, thumbnail_url, original_price, tags, categories, recommendations, short_description, about_the_game, release_date, last_synced_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        (app_id, name, genre, positive_rate, thumbnail_url, original_price, tags, categories, recommendations, review_count, short_description, about_the_game, release_date, last_synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       """;
 
   private final JdbcTemplate jdbcTemplate;
@@ -83,8 +81,10 @@ public class GameCsvSeedRunner implements ApplicationRunner {
     long parsed = 0;
     long skipped = 0;
     long duplicated = 0;
-    // 이름이 완전히 같은 행은 CSV에서 먼저 나온 것만 남긴다. 청크로 나누기 전 파싱 스레드 하나에서만 걸러서 writer 스레드 간 경합이 없다.
-    Set<String> seenNames = new HashSet<>();
+    // 이름이 완전히 같은 행은 리뷰(Total reviews)가 가장 많은 행 하나만 남긴다(같으면 먼저 나온 행).
+    // 청크로 나누기 전 파싱 스레드 하나에서만 걸러서 writer 스레드 간 경합이 없다.
+    Map<String, Long> bestRowByName = findBestRowByName();
+    long rowIndex = -1;
 
     // 큐가 가득 차면 파싱 스레드(호출자)가 직접 실행해서 자연스럽게 속도를 맞춘다.
     ExecutorService executor = new ThreadPoolExecutor(
@@ -109,13 +109,14 @@ public class GameCsvSeedRunner implements ApplicationRunner {
       List<Object[]> chunk = new ArrayList<>(chunkSize);
       String[] row;
       while ((row = reader.readNext()) != null) {
+        rowIndex++;
         if (row.length != header.length) {
           skipped++; // 깨진 행은 건너뜀
           continue;
         }
         String name = row[col.get("Name")];
         // 대소문자·공백까지 그대로 같은 이름만 중복으로 본다. 이름이 비어 있는 행은 서로 같은 게임이 아니므로 거르지 않는다.
-        if (name != null && !name.isEmpty() && !seenNames.add(name)) {
+        if (name != null && !name.isEmpty() && bestRowByName.get(name) != rowIndex) {
           duplicated++;
           continue;
         }
@@ -139,6 +140,42 @@ public class GameCsvSeedRunner implements ApplicationRunner {
 
     log.info("게임 CSV 시드 완료: 파싱 {}건, 삽입 {}건, 이름 중복 제외 {}건, 건너뜀 {}건, {}ms",
         parsed, inserted.get(), duplicated, skipped, System.currentTimeMillis() - started);
+  }
+
+  // 이름이 같은 행 중 리뷰가 가장 많은 행의 순번(헤더 다음부터 0)을 이름별로 구한다. CSV를 한 번 더 읽는 대신 메모리는 이름 수만큼만 쓴다.
+  private Map<String, Long> findBestRowByName() throws Exception {
+    Map<String, Long> bestRow = new HashMap<>();
+    Map<String, Integer> bestReviews = new HashMap<>();
+    try (CSVReader reader = new CSVReaderBuilder(
+        new InputStreamReader(new ClassPathResource(CSV_PATH).getInputStream(), StandardCharsets.UTF_8))
+        .withCSVParser(new CSVParserBuilder().withEscapeChar(CSVParser.NULL_CHARACTER).build())
+        .build()) {
+      Map<String, Integer> col = new HashMap<>();
+      String[] header = reader.readNext();
+      for (int i = 0; i < header.length; i++) {
+        col.put(header[i].replace("\uFEFF", "").trim(), i);
+      }
+      long rowIndex = -1;
+      String[] row;
+      while ((row = reader.readNext()) != null) {
+        rowIndex++; // 본 처리와 같은 방식으로 깨진 행도 순번에 포함한다.
+        if (row.length != header.length) {
+          continue;
+        }
+        String name = row[col.get("Name")];
+        if (name == null || name.isEmpty()) {
+          continue;
+        }
+        Integer parsed = parseIntOrNull(row[col.get("Total reviews")]);
+        int reviews = parsed == null ? 0 : parsed;
+        Integer best = bestReviews.get(name);
+        if (best == null || reviews > best) {
+          bestReviews.put(name, reviews);
+          bestRow.put(name, rowIndex);
+        }
+      }
+    }
+    return bestRow;
   }
 
   private Future<?> submit(ExecutorService executor, List<Object[]> chunk, AtomicLong inserted) {
@@ -174,6 +211,7 @@ public class GameCsvSeedRunner implements ApplicationRunner {
         nullIfBlank(row[col.get("Tags")]),
         nullIfBlank(row[col.get("Categories")]),
         parseIntOrNull(row[col.get("Recommendations")]),
+        parseIntOrNull(row[col.get("Total reviews")]),
         nullIfBlank(row[col.get("Short description")]),
         nullIfBlank(row[col.get("About the game")]),
         parseDateOrNull(row[col.get("Release date")]),

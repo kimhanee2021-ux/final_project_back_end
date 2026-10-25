@@ -62,6 +62,15 @@ app:
     new-slots: ${RECOMMEND_NEW_SLOTS:3}
     #저장된 추천 목록을 다시 계산하지 않고 쓰는 시간
     cache-ttl-hours: ${RECOMMEND_CACHE_TTL_HOURS:24}
+  #자연어 게임 검색: AI(Gemini)가 한국어 검색어를 영어 키워드로 바꾸고, 모델 서버(final_project_fast_api, 추천과 같은 서버)가 순위를 계산한다
+  search:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_SEARCH_MODEL:gemini-flash-latest}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    #AI 분석이 이 시간 안에 안 끝나면 검색어를 그대로 쓰는 대체 경로로 간다
+    llm-timeout-seconds: ${SEARCH_LLM_TIMEOUT_SECONDS:15}
+    model-server-url: ${RECOMMEND_BASE_URL:http://localhost:8000}
+    timeout-seconds: ${SEARCH_TIMEOUT_SECONDS:10}
   #games 테이블 CSV 시드 (임시용, 최초 1회만 true로 켜서 사용. games 테이블에 데이터가 있으면 자동으로 스킵됨)
   seed:
     games:

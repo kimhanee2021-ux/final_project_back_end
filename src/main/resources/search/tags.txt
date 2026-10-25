@@ -1,0 +1,448 @@
+Indie
+Singleplayer
+Action
+Adventure
+Casual
+Simulation
+2D
+RPG
+Strategy
+Multiplayer
+Story Rich
+Puzzle
+Atmospheric
+First-Person
+Anime
+Pixel Graphics
+Exploration
+Horror
+Cute
+Female Protagonist
+Shooter
+3D
+Free to Play
+Funny
+Open World
+Fantasy
+Visual Novel
+Platformer
+Sci-fi
+Arcade
+Early Access
+Sandbox
+Psychological Horror
+Co-op
+FPS
+Difficult
+Great Soundtrack
+Point & Click
+Survival
+Action-Adventure
+Colorful
+Relaxing
+Retro
+Third Person
+Management
+Comedy
+Sexual Content
+Building
+Rogue-lite
+Family Friendly
+Rogue-like
+Mystery
+Nudity
+Gore
+Choices Matter
+Violent
+Realistic
+PvP
+Online Co-Op
+Turn-Based Strategy
+Action RPG
+Turn-Based
+Multiple Endings
+VR
+Character Customization
+Physics
+Sports
+JRPG
+Space
+Dark
+Top-Down
+Side Scroller
+Action Roguelike
+Hack and Slash
+Crafting
+Tactical
+Base-Building
+Racing
+RTS
+Dating Sim
+Survival Horror
+Immersive Sim
+Historical
+Dungeon Crawler
+Romance
+Classic
+2D Platformer
+Turn-Based Tactics
+Bullet Hell
+Turn-Based Combat
+Controller
+Hand-drawn
+Interactive Fiction
+Walking Simulator
+Local Co-Op
+Stylized
+Shoot 'Em Up
+Local Multiplayer
+Zombies
+War
+Puzzle-Platformer
+Massively Multiplayer
+Cartoony
+Mature
+Hidden Object
+City Builder
+Choose Your Own Adventure
+Card Game
+Minimalist
+Isometric
+Economy
+Resource Management
+Life Sim
+Post-apocalyptic
+Procedural Generation
+Stealth
+Detective
+Drama
+Military
+Surreal
+PvE
+3D Platformer
+Dark Fantasy
+Medieval
+Hentai
+Memes
+Short
+Combat
+Third-Person Shooter
+Driving
+Tower Defense
+Emotional
+LGBTQ+
+1990's
+Replay Value
+Fast-Paced
+Board Game
+Metroidvania
+RPGMaker
+Education
+Cyberpunk
+Magic
+Automobile Sim
+Dark Humor
+Top-Down Shooter
+Wargame
+Fighting
+Old School
+Strategy RPG
+Deckbuilding
+Party-Based RPG
+Tactical RPG
+Real Time Tactics
+Clicker
+Text-Based
+Beat 'em up
+Cartoon
+2.5D
+Logic
+Grand Strategy
+Cinematic
+World War II
+Competitive
+Robots
+Time Management
+Souls-like
+Flight
+Investigation
+Idler
+Card Battler
+NSFW
+Music
+Colony Sim
+Psychological
+Tabletop
+Futuristic
+Twin Stick Shooter
+Nature
+Perma Death
+Narration
+Thriller
+Farming Sim
+Open World Survival Craft
+Rhythm
+Crime
+Arena Shooter
+Moddable
+Precision Platformer
+Linear
+4 Player Local
+Team-Based
+Level Editor
+Parkour
+Collectathon
+MMORPG
+Aliens
+Experimental
+Lore-Rich
+Abstract
+Cats
+2D Fighter
+Supernatural
+Lovecraftian
+CRPG
+Comic Book
+Automation
+Loot
+Utilities
+Destruction
+Mechs
+1980s
+4X
+Demons
+Psychedelic
+Space Sim
+Creature Collector
+Noir
+Mythology
+Dystopian
+Design & Illustration
+Conversation
+e-sports
+Cozy
+Software
+Dark Comedy
+Alternate History
+Word Game
+Roguelike Deckbuilder
+FMV
+Match 3
+Score Attack
+Swordplay
+Capitalism
+Runner
+Steampunk
+Martial Arts
+Wholesome
+Cooking
+Spectacle fighter
+Trading
+Auto Battler
+Agriculture
+Split Screen
+Political
+Pirates
+Hex Grid
+Nonlinear
+Otome
+Vehicular Combat
+Political Sim
+3D Fighter
+Real-Time
+Beautiful
+Science
+Real-Time with Pause
+Cult Classic
+God Game
+Remake
+Ninja
+Parody
+Mouse only
+Voxel
+Naval
+Tanks
+Philosophical
+Trains
+Character Action Game
+Blood
+Grid-Based Movement
+Battle Royale
+Artificial Intelligence
+Boomer Shooter
+Co-op Campaign
+Villain Protagonist
+Combat Racing
+Dragons
+Programming
+Hacking
+Escape Room
+Vampire
+Politics
+Underwater
+Soundtrack
+Trading Card Game
+Animation & Modeling
+Fishing
+Dinosaurs
+Game Development
+Cold War
+Modern
+Gothic
+Narrative
+Party Game
+Superhero
+Time Travel
+Western
+Gun Customization
+Inventory Management
+Mining
+Bullet Time
+Naval Combat
+Diplomacy
+Transportation
+Time Manipulation
+Looter Shooter
+Mystery Dungeon
+Football (Soccer)
+MOBA
+Satire
+America
+Dog
+Assassin
+Sailing
+Faith
+Class-Based
+Tutorial
+Hunting
+Hero Shooter
+Addictive
+Typing
+Dwarf
+Party
+Action RTS
+World War I
+Sokoban
+Motorbike
+Trivia
+Touch-Friendly
+Heist
+Solitaire
+Video Production
+Farming
+Episodic
+Minigames
+Underground
+Offroad
+Illuminati
+Nostalgia
+Conspiracy
+Bikes
+Rome
+Asynchronous Multiplayer
+Kickstarter
+Dynamic Narration
+3D Vision
+Social Deduction
+Traditional Roguelike
+On-Rails Shooter
+Immersive
+Gambling
+Quick-Time Events
+Football (American)
+Audio Production
+Time Attack
+Games Workshop
+6DOF
+Sniper
+Chess
+Experience
+Horses
+Web Publishing
+Golf
+Dungeons & Dragons
+Software Training
+Mars
+Submarine
+Medical Sim
+Music-Based Procedural Generation
+GameMaker
+Warhammer 40K
+LEGO
+Vikings
+Photo Editing
+Pinball
+Roguevania
+Outbreak Sim
+Snow
+Jet
+Musou
+Job Simulator
+Archery
+Skateboarding
+Boxing
+Transhumanism
+Motocross
+Mod
+Mini Golf
+Werewolves
+Based On A Novel
+Spaceships
+Unforgiving
+Crowdfunded
+Wrestling
+Movie
+Basketball
+Extraction Shooter
+Tennis
+Pool
+Asymmetric VR
+Jump Scare
+Sequel
+Cycling
+Spelling
+Intentionally Awkward Controls
+Shop Keeper
+Skating
+Hockey
+Silent Protagonist
+Epic
+Baseball
+Documentary
+Lemmings
+Foreign
+Snowboarding
+BMX
+Mahjong
+Skiing
+360 Video
+Dice
+Gaming
+Well-Written
+Boss Rush
+TrackIR
+Fox
+Voice Control
+ATV
+Cricket
+Electronic Music
+Hardware
+Bowling
+Electronic
+Rugby
+Rock Music
+Benchmark
+Snooker
+Coding
+Reboot
+Birds
+Instrumental Music
+Hobby Sim
+Ambient
+Feature Film
+Volleyball
+8-bit Music
+Elf
+VR Only
+Steam Machine
+Masterpiece
