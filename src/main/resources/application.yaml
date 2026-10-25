@@ -41,11 +41,6 @@ steam:
 
 #CORS 허용 대상 프론트엔드 주소 (값이 없으면 vite 기본 포트 사용)
 app:
-  rank:
-    # 조회는 항상 제공하며, 저장과 정기 수집은 명시적으로 켠 경우에만 실행한다.
-    sync-enabled: ${RANK_SYNC_ENABLED:false}
-    schedule-enabled: ${RANK_SCHEDULE_ENABLED:false}
-    sync-cron: ${RANK_SYNC_CRON:0 0 6 * * *}
   ai:
     api-key: ${GEMINI_API_KEY:}
     # flash-latest는 응답이 수십 초씩 걸려(2026-10 측정) 가벼운 lite를 기본으로 쓴다

@@ -15,11 +15,6 @@ public class BriefingController {
   private final BriefingWorker worker;
   public BriefingController(OfficialNewsRepository news,GameBriefingRepository briefings,BriefingWorker worker){this.news=news;this.briefings=briefings;this.worker=worker;}
   private void validate(int page,Long appId){if(page<0 || page>10000 || (appId!=null && appId<=0))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"올바른 페이지와 게임 ID를 입력하세요.");}
-  @GetMapping("/official-news")
-  public Map<String,Object> news(@RequestParam(defaultValue="0") int page,@RequestParam(required=false) Long appId) {
-    validate(page,appId);var result=news.list(appId,PageRequest.of(page,20));
-    return Map.of("items",result.getContent(),"total",result.getTotalElements(),"last",result.isLast());
-  }
   @GetMapping("/briefing")
   public Map<String,Object> briefing(@RequestParam(defaultValue="0") int page,@RequestParam(required=false) Long appId,
       @RequestParam(required=false) String group,@RequestParam(required=false) String topic) {
@@ -43,6 +38,4 @@ public class BriefingController {
     int start=Math.min(cards.size(),page*10),end=Math.min(cards.size(),start+10);
     return Map.of("items",cards.subList(start,end),"total",cards.size(),"last",end==cards.size(),"status",worker.status());
   }
-  @GetMapping("/official-news/games")
-  public Object games(){return news.games();}
 }

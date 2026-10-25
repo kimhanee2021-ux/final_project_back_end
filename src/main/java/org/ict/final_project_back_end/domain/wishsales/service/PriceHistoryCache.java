@@ -1,7 +1,7 @@
 package org.ict.final_project_back_end.domain.wishsales.service;
 
 import org.ict.final_project_back_end.domain.wishsales.client.ItadClient;
-import org.ict.final_project_back_end.domain.wishsales.dto.WishlistSalesDtos.PricePoint;
+import org.ict.final_project_back_end.domain.wishsales.dto.PricePoint;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

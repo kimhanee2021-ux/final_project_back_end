@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.ict.final_project_back_end.domain.library.dto.LibraryGamePriceResponse;
 import org.ict.final_project_back_end.domain.library.dto.LibraryGameResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,23 +33,6 @@ public interface LibraryApiDocs {
       @ApiResponse(responseCode = "502", description = "스팀 Web API 호출 실패", content = @Content)
   })
   ResponseEntity<List<LibraryGameResponse>> syncSteamLibrary(
-      @Parameter(hidden = true)
-      @AuthenticationPrincipal Long userId
-  );
-
-  @Operation(
-      summary = "라이브러리 게임 가격 조회",
-      description = "로그인한 사용자가 보유한 라이브러리 게임들의 원화(KRW) 가격을 조회한다. "
-          + "games 테이블의 원화 정가(original_price)를 그대로 쓴다. 할인 정보가 없어 현재가는 정가와 같고 할인율은 0이다. "
-          + "정가가 0원인 게임은 isFree=true에 가격 0, games에 없거나 가격이 비어 있는 게임은 가격 필드가 null로 내려온다."
-  )
-  @SecurityRequirement(name = "bearerAuth")
-  @ApiResponses({
-      @ApiResponse(responseCode = "200", description = "조회 성공, 라이브러리 게임별 가격 목록 반환",
-          content = @Content(array = @ArraySchema(schema = @Schema(implementation = LibraryGamePriceResponse.class)))),
-      @ApiResponse(responseCode = "401", description = "인증되지 않은 요청(토큰 없음/만료/위조)", content = @Content)
-  })
-  ResponseEntity<List<LibraryGamePriceResponse>> getLibraryGamePrices(
       @Parameter(hidden = true)
       @AuthenticationPrincipal Long userId
   );

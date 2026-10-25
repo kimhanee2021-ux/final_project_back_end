@@ -32,15 +32,6 @@ public class GameController implements GameApiDocs {
   }
 
   @Override
-  @GetMapping("/search")
-  public ResponseEntity<GamePageResponse> search(
-      @RequestParam(name = "page", defaultValue = "0") int page,
-      @RequestParam(name = "size", defaultValue = "20") int size,
-      @RequestParam(name = "name") String name) {
-    return ResponseEntity.ok(service.searchGames(page, size, name));
-  }
-
-  @Override
   @GetMapping("/{appId}")
   public ResponseEntity<GameDetailResponse> detail(@PathVariable("appId") Long appId) {
     return ResponseEntity.ok(service.getGame(appId));

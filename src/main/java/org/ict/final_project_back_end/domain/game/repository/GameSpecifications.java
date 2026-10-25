@@ -1,25 +1,17 @@
 package org.ict.final_project_back_end.domain.game.repository;
 
-import java.util.ArrayList;
 import java.util.Locale;
-import jakarta.persistence.criteria.Predicate;
 import org.ict.final_project_back_end.domain.game.entity.Game;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class GameSpecifications {
   private GameSpecifications() { }
 
-  public static Specification<Game> matching(String genre, String name) {
-    return (root, query, builder) -> {
-      var predicates = new ArrayList<Predicate>();
-      if (genre != null && !genre.isBlank()) {
-        predicates.add(builder.like(builder.lower(root.get("genre")), containsPattern(genre), '\\'));
-      }
-      if (name != null && !name.isBlank()) {
-        predicates.add(builder.like(builder.lower(root.get("name")), containsPattern(name), '\\'));
-      }
-      return builder.and(predicates.toArray(Predicate[]::new));
-    };
+  // 장르 부분 일치 (대소문자 무시). 장르가 비어 있으면 조건 없이 전체
+  public static Specification<Game> genreContains(String genre) {
+    return (root, query, builder) -> genre == null || genre.isBlank()
+        ? builder.conjunction()
+        : builder.like(builder.lower(root.get("genre")), containsPattern(genre), '\\');
   }
 
   private static String containsPattern(String value) {

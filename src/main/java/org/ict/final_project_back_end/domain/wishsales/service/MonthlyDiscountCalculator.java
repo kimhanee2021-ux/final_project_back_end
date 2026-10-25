@@ -1,6 +1,6 @@
 package org.ict.final_project_back_end.domain.wishsales.service;
 
-import org.ict.final_project_back_end.domain.wishsales.dto.WishlistSalesDtos.PricePoint;
+import org.ict.final_project_back_end.domain.wishsales.dto.PricePoint;
 
 import java.time.OffsetDateTime;
 import java.time.YearMonth;

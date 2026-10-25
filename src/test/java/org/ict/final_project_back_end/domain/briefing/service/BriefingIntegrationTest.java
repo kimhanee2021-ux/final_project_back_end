@@ -66,8 +66,7 @@ class BriefingIntegrationTest {
   }
   @Test void readsRequireAuthenticationAndCannotStartCollection() throws Exception {
     mvc.perform(get("/api/board/briefing")).andExpect(status().isUnauthorized());
-    mvc.perform(get("/api/board/official-news")).andExpect(status().isUnauthorized());
-    mvc.perform(get("/api/board/official-news?page=-1").header("Authorization",token())).andExpect(status().isBadRequest());
+    mvc.perform(get("/api/board/briefing?page=-1").header("Authorization",token())).andExpect(status().isBadRequest());
     mvc.perform(get("/api/board/briefing").header("Authorization",token())).andExpect(status().isOk());
     verifyNoInteractions(steam);verify(ai,never()).analyze(anyList());
   }

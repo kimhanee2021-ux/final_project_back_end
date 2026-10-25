@@ -1,6 +1,6 @@
 package org.ict.final_project_back_end.domain.wishsales.client;
 
-import org.ict.final_project_back_end.domain.wishsales.dto.WishlistSalesDtos.PricePoint;
+import org.ict.final_project_back_end.domain.wishsales.dto.PricePoint;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
