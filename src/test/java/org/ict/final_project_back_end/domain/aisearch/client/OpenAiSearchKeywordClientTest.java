@@ -16,7 +16,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 // 실제 OpenAI 없이 요청 모양과 Responses API 봉투 해석만 검증한다
-class SearchKeywordClientTest {
+class OpenAiSearchKeywordClientTest {
 
   private static String envelope(String answer) {
     try {
@@ -29,13 +29,13 @@ class SearchKeywordClientTest {
     }
   }
 
-  private record Setup(MockRestServiceServer server, SearchKeywordClient client) {
+  private record Setup(MockRestServiceServer server, OpenAiSearchKeywordClient client) {
   }
 
   private Setup setup(String key) {
     RestClient.Builder builder = RestClient.builder().baseUrl("http://openai");
     MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    return new Setup(server, new SearchKeywordClient(key, "gpt-5.4-mini", builder));
+    return new Setup(server, new OpenAiSearchKeywordClient(key, "gpt-5.4-mini", builder));
   }
 
   @Test
@@ -86,7 +86,7 @@ class SearchKeywordClientTest {
     SearchKeywords keywords = s.client().parse(envelope("""
         {"intent":"SEARCH","gameTitle":"","tags":["a","b","c","d","e","f","g","h"],"excludeTags":[],"description":"%s","similarTo":"Elden Ring"}
         """.formatted("x".repeat(300))));
-    assertEquals(SearchKeywordClient.MAX_TAGS, keywords.tags().size());
+    assertEquals(OpenAiSearchKeywordClient.MAX_TAGS, keywords.tags().size());
     assertEquals("", keywords.description());
     assertEquals("Elden Ring", keywords.similarTo());
   }

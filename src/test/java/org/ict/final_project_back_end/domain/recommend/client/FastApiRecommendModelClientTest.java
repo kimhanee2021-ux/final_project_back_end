@@ -17,10 +17,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 // 실제 추천 서버 없이 요청 본문 모양(snake_case)과 응답·오류 해석만 검증한다
-class RecommendModelClientTest {
+class FastApiRecommendModelClientTest {
 
   private MockRestServiceServer server;
-  private RecommendModelClient client;
+  private FastApiRecommendModelClient client;
 
   private final RecommendModelClient.Request request = new RecommendModelClient.Request(
       List.of(new RecommendModelClient.PlayedGame(730, 1.5)), List.of(730L, 570L), 5, 2);
@@ -29,7 +29,7 @@ class RecommendModelClientTest {
   void setup() {
     RestClient.Builder builder = RestClient.builder().baseUrl("http://model");
     server = MockRestServiceServer.bindTo(builder).build();
-    client = new RecommendModelClient(builder);
+    client = new FastApiRecommendModelClient(builder.build());
   }
 
   @Test

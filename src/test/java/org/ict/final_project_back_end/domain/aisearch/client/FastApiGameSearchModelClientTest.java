@@ -17,19 +17,19 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 // 실제 검색 모델 없이 요청 본문 모양(snake_case)과 응답·오류 해석만 검증한다
-class GameSearchModelClientTest {
+class FastApiGameSearchModelClientTest {
 
   private static final String URL = "http://model/internal/v1/search";
   private final SearchKeywords keywords = new SearchKeywords(SearchKeywords.Intent.SEARCH, "",
       List.of("Horror"), List.of("Pixel Graphics"), "scary", "Phasmophobia");
   private MockRestServiceServer server;
-  private GameSearchModelClient client;
+  private FastApiGameSearchModelClient client;
 
   @BeforeEach
   void setup() {
     RestClient.Builder builder = RestClient.builder().baseUrl("http://model");
     server = MockRestServiceServer.bindTo(builder).build();
-    client = new GameSearchModelClient(builder);
+    client = new FastApiGameSearchModelClient(builder.build());
   }
 
   @Test
