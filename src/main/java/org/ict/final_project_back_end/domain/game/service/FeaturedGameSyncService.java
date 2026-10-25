@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,9 +64,10 @@ public class FeaturedGameSyncService {
     LocalDateTime now = LocalDateTime.now();
     List<FeaturedGame> rows = new ArrayList<>();
     int rank = 0;
+    Set<Long> seen = new HashSet<>();
     for (Object raw : SteamFeaturedClient.asItemList(body.get("featured_win"))) {
       SteamFeaturedClient.Item item = SteamFeaturedClient.toItem(raw);
-      if (item == null) {
+      if (isSkippable(item, seen)) {
         continue;
       }
       rows.add(FeaturedGame.builder()
@@ -112,9 +114,10 @@ public class FeaturedGameSyncService {
       String categoryName = asString(categoryMap.get("name"));
       int order = categoryOrder++;
       int rank = 0;
+      Set<Long> seen = new HashSet<>();
       for (Object raw : SteamFeaturedClient.asItemList(categoryMap.get("items"))) {
         SteamFeaturedClient.Item item = SteamFeaturedClient.toItem(raw);
-        if (item == null) {
+        if (isSkippable(item, seen)) {
           continue;
         }
         rows.add(FeaturedCategoryGame.builder()
@@ -147,6 +150,12 @@ public class FeaturedGameSyncService {
     Set<Long> adultAppIds = adultContentFilter.findAdultAppIds(
         rows.stream().map(row -> appIdOf.applyAsLong(row)).toList());
     rows.removeIf(row -> adultAppIds.contains(appIdOf.applyAsLong(row)));
+  }
+
+  // 스팀이 한 목록에 같은 게임을 두 번 내려줄 때가 있어, 목록 안에서 처음 나온 것만 남긴다.
+  // 그대로 저장하면 화면에서 같은 appId가 두 번 그려져 React key가 겹친다.
+  private static boolean isSkippable(SteamFeaturedClient.Item item, Set<Long> seen) {
+    return item == null || !seen.add(item.appId());
   }
 
   // "0".."7" 같은 숫자 키(장르 ID별 서브 블록)와 genres/trailerslideshow 블록은 게임 목록이 아니라 건너뛴다.

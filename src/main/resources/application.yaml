@@ -45,7 +45,8 @@ app:
     sync-cron: ${RANK_SYNC_CRON:0 0 6 * * *}
   ai:
     api-key: ${GEMINI_API_KEY:}
-    model: ${GEMINI_MODEL:gemini-flash-latest}
+    # flash-latest는 응답이 수십 초씩 걸려(2026-10 측정) 가벼운 lite를 기본으로 쓴다
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
     pc:
       model: ${GEMINI_PC_MODEL:gemini-3.5-flash-lite}
       provider: ${PC_AI_PROVIDER:auto}
@@ -67,11 +68,19 @@ app:
     enabled: ${PRICE_SYNC_ENABLED:false}
     cron: ${PRICE_SYNC_CRON:0 30 3 * * *}
     request-interval-ms: ${PRICE_SYNC_REQUEST_INTERVAL_MS:500}
-  #AI 게임 소비 코치(Gemini). 키는 .env의 GEMINI_API_KEY만 사용 (AI 팀원 기능과 같은 키, 설정 이름은 따로)
+  #AI 게임 소비 코치(Gemini + Groq). 키는 .env의 GEMINI_API_KEY, GROQ_API_KEY를 쓴다 (다른 AI 기능과 같은 키, 설정 이름은 따로)
   coach:
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_COACH_MODEL:gemini-3.5-flash-lite}
     base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-model: ${GROQ_COACH_MODEL:qwen/qwen3.8-27b}
+    groq-base-url: ${GROQ_BASE_URL:https://api.groq.com}
+    # 화면마다 먼저 쓸 공급자 순서. 앞 공급자가 혼잡·한도 초과·미설정이면 다음 공급자로 넘어간다
+    # Groq 무료 키는 분당 8,000토큰이라 코치 요청을 1분에 2번 정도만 받고, PC 진단과 같은 키를 쓴다.
+    # 그래서 기본은 둘 다 Gemini 먼저, Groq는 예비로 둔다 (Groq를 유료로 바꾸면 순서만 바꾸면 된다)
+    chat-providers: ${COACH_CHAT_PROVIDERS:gemini,groq}
+    insight-providers: ${COACH_INSIGHT_PROVIDERS:gemini,groq}
   #스팀 featured/featuredcategories 캐시를 매일 다시 받는 시각 (기본: 매일 새벽 4시 10분, KST)
   featured:
     sync-cron: ${FEATURED_SYNC_CRON:0 10 4 * * *}

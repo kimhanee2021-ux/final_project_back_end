@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -13,11 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-// Gemini로 분석 주제 하나의 결과(판단·이유·비교·다음 행동)를 만든다. 호출 자체(키·모델·재시도·오류 처리)는 GeminiCoachClient.generate를 그대로 쓰고,
-// 여기서는 분석용 프롬프트와 응답 형식 확인만 맡는다.
+// 분석 주제 하나의 결과(판단·이유·비교·다음 행동)를 만든다. 여기서는 분석용 프롬프트와 응답 형식 확인만 맡고,
+// 어느 공급자(Gemini, Groq)에 물을지는 CoachModelRouter가 app.coach.insight-providers 순서대로 정한다.
 @Slf4j
 @Component
-public class GeminiInsightClient implements CoachInsightAiClient {
+public class CoachInsightClient implements CoachInsightAiClient {
 
   static final int MAX_TEXT_LENGTH = 400;
   static final int MAX_RECOMMENDATIONS = 3;
@@ -72,48 +73,36 @@ public class GeminiInsightClient implements CoachInsightAiClient {
                   "required", List.of("appId", "reason")))),
       "required", List.of("verdict", "reason", "comparison", "action", "recommendations"));
 
-  private final GeminiCoachClient gemini;
+  private final CoachModelRouter router;
+  private final List<String> providers;
   private final ObjectMapper json = new ObjectMapper();
 
-  public GeminiInsightClient(GeminiCoachClient gemini) {
-    this.gemini = gemini;
+  public CoachInsightClient(CoachModelRouter router,
+                            @Value("${app.coach.insight-providers:gemini,groq}") String providers) {
+    this.router = router;
+    this.providers = CoachModelRouter.parseOrder(providers);
   }
 
   @Override
   public Insight insight(Map<String, Object> facts, InsightTopic topic) {
     try {
-      return parseInsight(json, gemini.generate(requestBody(facts, topic)));
+      return parseInsight(json, router.generateJson(providers, "insight", request(facts, topic)));
     } catch (JsonProcessingException e) {
-      log.warn("Gemini 분석 요청 만들기 실패: {}", e.getClass().getSimpleName());
+      log.warn("AI 분석 요청 만들기 실패: {}", e.getClass().getSimpleName());
       throw AiCoachException.invalidResponse();
     }
   }
 
-  Map<String, Object> requestBody(Map<String, Object> facts, InsightTopic topic) throws JsonProcessingException {
+  CoachModel.Request request(Map<String, Object> facts, InsightTopic topic) throws JsonProcessingException {
     // facts와 주제 안내를 한 메시지에 JSON으로 넣어, 데이터 안의 문장이 규칙처럼 읽히지 않게 구분한다
     String content = json.writeValueAsString(Map.of("facts", facts, "focus", topic.focus()));
-    return Map.of(
-        "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))),
-        "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", content)))),
-        "generationConfig", Map.of("responseMimeType", "application/json", "responseJsonSchema", RESPONSE_SCHEMA,
-            "temperature", 0.2, "maxOutputTokens", 2048));
+    return new CoachModel.Request(SYSTEM_PROMPT, List.of(new CoachModel.Message("user", content)), RESPONSE_SCHEMA, 0.2, 2048);
   }
 
-  // Gemini 응답 본문에서 판단·이유·비교·다음 행동·추천을 꺼낸다. 끝까지 생성되지 않았거나 형식이 틀리면 예외
-  static Insight parseInsight(ObjectMapper json, byte[] body) {
+  // 모델이 만든 JSON 문자열에서 판단·이유·비교·다음 행동·추천을 꺼낸다. 형식이 틀리면 예외
+  static Insight parseInsight(ObjectMapper json, String text) {
     try {
-      JsonNode candidate = json.readTree(body).path("candidates").path(0);
-      if (!"STOP".equals(candidate.path("finishReason").asText())) {
-        log.warn("Gemini 분석 거부: 생성 중단 {}", candidate.path("finishReason").asText());
-        throw AiCoachException.invalidResponse();
-      }
-      StringBuilder text = new StringBuilder();
-      for (JsonNode part : candidate.path("content").path("parts")) {
-        if (!part.path("thought").asBoolean(false)) {
-          text.append(part.path("text").asText(""));
-        }
-      }
-      JsonNode reply = json.readTree(text.toString());
+      JsonNode reply = json.readTree(text);
       String verdict = reply.path("verdict").asText("").trim();
       String reason = reply.path("reason").asText("").trim();
       String comparison = reply.path("comparison").asText("").trim();

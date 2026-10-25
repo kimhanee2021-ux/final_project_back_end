@@ -10,27 +10,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-// Gemini(generateContent)로 AI 소비 코치 답변을 만든다. 키는 서버 .env의 GEMINI_API_KEY만 쓰고 프론트로 보내지 않는다.
+// AI 소비 코치 답변을 만든다. 여기서는 코치용 프롬프트와 답 형식 확인만 맡고,
+// 어느 공급자(Gemini, Groq)에 물을지는 CoachModelRouter가 app.coach.chat-providers 순서대로 정한다.
 // 답은 JSON 스키마({answer, recommendations})로 받아 형식이 틀리면 버린다.
 @Slf4j
 @Component
-public class GeminiCoachClient implements CoachAiClient {
+public class CoachReplyClient implements CoachAiClient {
 
   static final int MAX_ANSWER_LENGTH = 1500;
   static final int MAX_RECOMMENDATIONS = 3;
-  private static final int MAX_RESPONSE_BYTES = 131_072;
-  private static final int MAX_RETRIES = 2;
-  private static final long RETRY_DELAY_MS = 1_500;
 
   static final String SYSTEM_PROMPT = """
       당신은 GameSense의 "AI 게임 소비 코치" 노바입니다(게임 속 안내자처럼 믿음직한 AI 게임 마스터). 사용자의 스팀 게임 소비와 플레이 기록을 보고 한국어로 친근하게 조언합니다.
@@ -78,8 +70,8 @@ public class GeminiCoachClient implements CoachAiClient {
          facts.ownedGames에 있는 게임만, 최대 3개입니다. 추천을 요청받으면 안 해 본 게임(unplayedPaidGames)과
          최근에 한 게임(playingRecently)을 우선 고려하고, 이유는 facts의 장르·플레이 시간·금액으로 짧게 설명하세요.
          인원·플레이 길이·분위기처럼 facts에 없는 특징은 단정하지 마세요. 지출·통계 질문에는 recommendations를 비워 두세요.
-      4. 아직 사지 않은 새 게임 추천이나 구매 상담을 요청받았을 때만 "AI 게임 추천" 메뉴를, 할인 알림을 요청받았을 때만
-         "AI 내 게임 매니저" 메뉴를 안내하고, 이때는 보유 게임을 추천하지 말고 recommendations를 비워 두세요.
+      4. 아직 사지 않은 새 게임 추천이나 구매 상담을 요청받았을 때만 "AI 게임 추천" 메뉴를 안내하고,
+         이때는 보유 게임을 추천하지 말고 recommendations를 비워 두세요.
       4-1. 기간 비교는 facts에 있는 기간끼리만 하세요. "작년", "올해"는 spendingByYear의 relative 값이 그것인 해만 가리킵니다.
          작년 기록이 없으면 없다고 말하세요. 올해(today가 속한 해)는 아직 진행 중이라는 점을 밝히고,
          "작년 같은 기간"처럼 facts에 없는 비교는 하지 마세요.
@@ -102,111 +94,41 @@ public class GeminiCoachClient implements CoachAiClient {
                   "required", List.of("appId", "reason")))),
       "required", List.of("answer", "recommendations"));
 
-  private final String apiKey;
-  private final String model;
-  private final String baseUrl;
+  private final CoachModelRouter router;
+  private final List<String> providers;
   private final ObjectMapper json = new ObjectMapper();
-  private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-  public GeminiCoachClient(@Value("${app.coach.api-key:}") String apiKey,
-                           @Value("${app.coach.model:gemini-3.5-flash-lite}") String model,
-                           @Value("${app.coach.base-url:https://generativelanguage.googleapis.com}") String baseUrl) {
-    this.apiKey = apiKey;
-    this.model = model;
-    this.baseUrl = baseUrl;
+  public CoachReplyClient(CoachModelRouter router,
+                          @Value("${app.coach.chat-providers:gemini,groq}") String providers) {
+    this.router = router;
+    this.providers = CoachModelRouter.parseOrder(providers);
   }
 
   @Override
   public Reply reply(Map<String, Object> facts, List<CoachChatRequest.Turn> history, String message) {
     try {
-      return parseReply(json, generate(requestBody(facts, history, message)));
+      return parseReply(json, router.generateJson(providers, "chat", request(facts, history, message)));
     } catch (JsonProcessingException e) {
-      log.warn("Gemini 코치 요청 만들기 실패: {}", e.getClass().getSimpleName());
+      log.warn("AI 코치 요청 만들기 실패: {}", e.getClass().getSimpleName());
       throw AiCoachException.invalidResponse();
     }
   }
 
-  // Gemini generateContent를 한 번 부르고 응답 본문을 돌려준다 (혼잡하면 잠깐 기다렸다 다시 시도).
-  // 코치 답변(reply)과 분석 한마디(GeminiInsightClient)가 같은 키·모델·오류 처리를 쓰도록 호출만 따로 뺐다.
-  byte[] generate(Map<String, Object> body) {
-    if (apiKey == null || apiKey.isBlank() || !model.matches("[a-zA-Z0-9._-]{1,100}")) {
-      throw AiCoachException.notConfigured();
-    }
-    try {
-      HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/v1beta/models/" + model + ":generateContent"))
-          .timeout(Duration.ofSeconds(30))
-          .header("Content-Type", "application/json")
-          .header("x-goog-api-key", apiKey)
-          .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
-          .build();
-      HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
-      // Gemini가 잠깐 혼잡(500/502/503/504)하면 조금 기다렸다가 다시 묻는다
-      for (int retry = 1; isBusy(response.statusCode()) && retry <= MAX_RETRIES; retry++) {
-        log.info("Gemini 코치 혼잡 HTTP {}, {}번째 다시 시도", response.statusCode(), retry);
-        Thread.sleep(RETRY_DELAY_MS * retry);
-        response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
-      }
-      if (isBusy(response.statusCode())) {
-        log.warn("Gemini 코치 혼잡이 계속됨: HTTP {}", response.statusCode());
-        throw AiCoachException.busy();
-      }
-      if (response.statusCode() == 429) {
-        throw AiCoachException.tooManyRequests();
-      }
-      if (response.statusCode() == 401 || response.statusCode() == 403 || response.statusCode() == 404) {
-        throw AiCoachException.notConfigured();
-      }
-      if (response.statusCode() != 200 || response.body().length > MAX_RESPONSE_BYTES) {
-        log.warn("Gemini 코치 응답 거부: HTTP {}, {} bytes", response.statusCode(), response.body().length);
-        throw AiCoachException.invalidResponse();
-      }
-      return response.body();
-    } catch (HttpTimeoutException e) {
-      throw AiCoachException.timeout();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw AiCoachException.timeout();
-    } catch (IOException e) {
-      log.warn("Gemini 코치 호출 실패: {}", e.getClass().getSimpleName());
-      throw AiCoachException.invalidResponse();
-    }
-  }
-
-  static boolean isBusy(int status) {
-    return status == 500 || status == 502 || status == 503 || status == 504;
-  }
-
-  Map<String, Object> requestBody(Map<String, Object> facts, List<CoachChatRequest.Turn> history, String message)
+  CoachModel.Request request(Map<String, Object> facts, List<CoachChatRequest.Turn> history, String message)
       throws JsonProcessingException {
-    List<Map<String, Object>> contents = new ArrayList<>();
+    List<CoachModel.Message> messages = new ArrayList<>();
     for (CoachChatRequest.Turn turn : history == null ? List.<CoachChatRequest.Turn>of() : history) {
-      contents.add(Map.of("role", turn.role(), "parts", List.of(Map.of("text", turn.text()))));
+      messages.add(new CoachModel.Message(turn.role(), turn.text()));
     }
     // facts와 질문을 한 메시지에 JSON으로 넣어, 질문 문장이 규칙처럼 읽히지 않게 구분한다
-    contents.add(Map.of("role", "user", "parts",
-        List.of(Map.of("text", json.writeValueAsString(Map.of("facts", facts, "question", message))))));
-    return Map.of(
-        "systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))),
-        "contents", contents,
-        "generationConfig", Map.of("responseMimeType", "application/json", "responseJsonSchema", RESPONSE_SCHEMA,
-            "temperature", 0.1, "maxOutputTokens", 2048));
+    messages.add(new CoachModel.Message("user", json.writeValueAsString(Map.of("facts", facts, "question", message))));
+    return new CoachModel.Request(SYSTEM_PROMPT, messages, RESPONSE_SCHEMA, 0.1, 2048);
   }
 
-  // Gemini 응답 본문에서 {answer, recommendations}를 꺼낸다. 끝까지 생성되지 않았거나 형식이 틀리면 예외
-  static Reply parseReply(ObjectMapper json, byte[] body) {
+  // 모델이 만든 JSON 문자열에서 {answer, recommendations}를 꺼낸다. 형식이 틀리면 예외
+  static Reply parseReply(ObjectMapper json, String text) {
     try {
-      JsonNode candidate = json.readTree(body).path("candidates").path(0);
-      if (!"STOP".equals(candidate.path("finishReason").asText())) {
-        log.warn("Gemini 코치 응답 거부: 생성 중단 {}", candidate.path("finishReason").asText());
-        throw AiCoachException.invalidResponse();
-      }
-      StringBuilder text = new StringBuilder();
-      for (JsonNode part : candidate.path("content").path("parts")) {
-        if (!part.path("thought").asBoolean(false)) {
-          text.append(part.path("text").asText(""));
-        }
-      }
-      JsonNode reply = json.readTree(text.toString());
+      JsonNode reply = json.readTree(text);
       String answer = reply.path("answer").asText("").trim();
       JsonNode items = reply.path("recommendations");
       if (answer.isEmpty() || answer.length() > MAX_ANSWER_LENGTH || !items.isArray() || items.size() > MAX_RECOMMENDATIONS) {

@@ -356,15 +356,6 @@ CREATE TABLE ai_chat_message_scores (
 -- 도메인 8. AI 챗봇 컴패니언·미니게임 (엔터 - 챗봇+게임)
 -- ============================================================
 
-CREATE TABLE taste_choices (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id BIGINT NOT NULL,
-  option_a VARCHAR(100) NOT NULL,
-  option_b VARCHAR(100) NOT NULL,
-  selected VARCHAR(100) NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='취향 월드컵 선택 로그';
-
 CREATE TABLE daily_fortune_draws (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT NOT NULL,
@@ -445,7 +436,6 @@ ALTER TABLE ai_chat_messages ADD CONSTRAINT fk_chatmsg_sender FOREIGN KEY (sende
 ALTER TABLE ai_chat_message_intents ADD CONSTRAINT fk_intent_msg FOREIGN KEY (message_id) REFERENCES ai_chat_messages(id);
 ALTER TABLE ai_chat_message_scores ADD CONSTRAINT fk_score_msg FOREIGN KEY (message_id) REFERENCES ai_chat_messages(id);
 
-ALTER TABLE taste_choices ADD CONSTRAINT fk_taste_user FOREIGN KEY (user_id) REFERENCES users(id);
 ALTER TABLE daily_fortune_draws ADD CONSTRAINT fk_fortune_user FOREIGN KEY (user_id) REFERENCES users(id);
 ALTER TABLE user_items ADD CONSTRAINT fk_useritem_user FOREIGN KEY (user_id) REFERENCES users(id);
 ALTER TABLE user_items ADD CONSTRAINT fk_useritem_item FOREIGN KEY (item_id) REFERENCES shop_items(id);

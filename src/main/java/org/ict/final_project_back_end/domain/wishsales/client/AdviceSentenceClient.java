@@ -50,7 +50,7 @@ public class AdviceSentenceClient {
             @Value("${ANTHROPIC_API_KEY:}") String anthropicKey,
             @Value("${ANTHROPIC_MODEL:claude-haiku-5-5}") String anthropicModel,
             @Value("${GEMINI_API_KEY:}") String geminiKey,
-            @Value("${GEMINI_MODEL:gemini-3.8-flash}") String geminiModel,
+            @Value("${GEMINI_MODEL:gemini-3.5-flash-lite}") String geminiModel,
             @Value("${GROQ_API_KEY:}") String groqKey,
             @Value("${GROQ_MODEL:llama-3.3-70b-versatile}") String groqModel) {
         // "gemini,groq" 같은 문자열을 공백 없이 소문자 목록으로 바꾼다

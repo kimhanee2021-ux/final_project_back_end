@@ -5,7 +5,8 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.domain.*;
 public interface OfficialNewsRepository extends JpaRepository<OfficialNews,Long> {
   long countByKoreanSummaryIsNotNull();
-  @Query("select distinct n.appId as appId,n.gameName as gameName from OfficialNews n order by n.gameName")
+  // 같은 게임이 글마다 다른 이름으로 저장될 수 있어 appId 하나당 한 줄로 묶는다.
+  @Query("select n.appId as appId,max(n.gameName) as gameName from OfficialNews n group by n.appId order by max(n.gameName)")
   List<GameOption> games();
   interface GameOption { Long getAppId(); String getGameName(); }
   Optional<OfficialNews> findByAppIdAndGid(Long appId,String gid);
