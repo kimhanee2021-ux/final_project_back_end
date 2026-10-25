@@ -60,18 +60,18 @@ public class CoachInsightClient implements CoachInsightAiClient {
       "recommendations": [{"appId": string, "reason": string}]} 형식으로만 답하세요.
       """;
 
-  private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
-      "type", "object",
-      "properties", Map.of(
-          "verdict", Map.of("type", "string"),
-          "reason", Map.of("type", "string"),
-          "comparison", Map.of("type", "string"),
-          "action", Map.of("type", "string"),
-          "recommendations", Map.of("type", "array", "maxItems", MAX_RECOMMENDATIONS,
-              "items", Map.of("type", "object",
-                  "properties", Map.of("appId", Map.of("type", "string"), "reason", Map.of("type", "string")),
-                  "required", List.of("appId", "reason")))),
-      "required", List.of("verdict", "reason", "comparison", "action", "recommendations"));
+  // recommendations의 appId는 이 회원의 보유 게임 번호 중에서만 고르게 해야 해서 요청마다 만든다
+  static Map<String, Object> responseSchema(Map<String, Object> facts) {
+    return Map.of(
+        "type", "object",
+        "properties", Map.of(
+            "verdict", Map.of("type", "string"),
+            "reason", Map.of("type", "string"),
+            "comparison", Map.of("type", "string"),
+            "action", Map.of("type", "string"),
+            "recommendations", RecommendationSchema.of(facts, MAX_RECOMMENDATIONS)),
+        "required", List.of("verdict", "reason", "comparison", "action", "recommendations"));
+  }
 
   private final CoachModelRouter router;
   private final List<String> providers;
@@ -96,7 +96,7 @@ public class CoachInsightClient implements CoachInsightAiClient {
   CoachModel.Request request(Map<String, Object> facts, InsightTopic topic) throws JsonProcessingException {
     // facts와 주제 안내를 한 메시지에 JSON으로 넣어, 데이터 안의 문장이 규칙처럼 읽히지 않게 구분한다
     String content = json.writeValueAsString(Map.of("facts", facts, "focus", topic.focus()));
-    return new CoachModel.Request(SYSTEM_PROMPT, List.of(new CoachModel.Message("user", content)), RESPONSE_SCHEMA, 0.2, 2048);
+    return new CoachModel.Request(SYSTEM_PROMPT, List.of(new CoachModel.Message("user", content)), responseSchema(facts), 0.2, 2048);
   }
 
   // 모델이 만든 JSON 문자열에서 판단·이유·비교·다음 행동·추천을 꺼낸다. 형식이 틀리면 예외

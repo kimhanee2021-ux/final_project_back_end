@@ -12,10 +12,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -37,6 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * resources/init_data/games_entity.csv 시드 데이터를 games 테이블에 적재하는 임시 러너.
  * - app.seed.games.enabled=true 일 때만 동작 (기본 false, 운영/평소 기동 시 비활성)
  * - games 테이블에 이미 데이터가 있으면 자동으로 스킵 (중복 적재 방지)
+ *   app.seed.games.fill-missing=true 면 데이터가 있어도 돌면서 빠진 app_id만 채운다 (INSERT IGNORE라 기존 행은 그대로)
+ * - 이름이 같아도 app_id가 다르면 다른 게임으로 보고 모두 넣는다 (같은 이름 1,200여 개 중 대부분이 개발사가 다른 별개 게임)
  * - CSV를 한 줄씩 스트리밍하면서 chunk-size 단위로 끊고, 청크를 여러 writer 스레드가
  *   병렬로 insert 한다. 청크 하나가 트랜잭션 하나(커밋 1회)라서 행마다 커밋하지 않는다.
  * - 대기 큐 크기를 제한해 파싱이 DB보다 앞서 나가도 메모리에 청크가 쌓이지 않는다.
@@ -68,12 +68,15 @@ public class GameCsvSeedRunner implements ApplicationRunner {
   @Value("${app.seed.games.writer-threads:4}")
   private int writerThreads;
 
+  @Value("${app.seed.games.fill-missing:false}")
+  private boolean fillMissing;
+
   @Override
   public void run(ApplicationArguments args) throws Exception {
     if (!seedEnabled) {
       return;
     }
-    if (gameRepository.count() > 0) {
+    if (!fillMissing && gameRepository.count() > 0) {
       log.info("games 테이블에 데이터가 이미 존재하여 CSV 시드를 건너뜁니다.");
       return;
     }
@@ -82,9 +85,6 @@ public class GameCsvSeedRunner implements ApplicationRunner {
     AtomicLong inserted = new AtomicLong();
     long parsed = 0;
     long skipped = 0;
-    long duplicated = 0;
-    // 이름이 완전히 같은 행은 CSV에서 먼저 나온 것만 남긴다. 청크로 나누기 전 파싱 스레드 하나에서만 걸러서 writer 스레드 간 경합이 없다.
-    Set<String> seenNames = new HashSet<>();
 
     // 큐가 가득 차면 파싱 스레드(호출자)가 직접 실행해서 자연스럽게 속도를 맞춘다.
     ExecutorService executor = new ThreadPoolExecutor(
@@ -113,12 +113,6 @@ public class GameCsvSeedRunner implements ApplicationRunner {
           skipped++; // 깨진 행은 건너뜀
           continue;
         }
-        String name = row[col.get("Name")];
-        // 대소문자·공백까지 그대로 같은 이름만 중복으로 본다. 이름이 비어 있는 행은 서로 같은 게임이 아니므로 거르지 않는다.
-        if (name != null && !name.isEmpty() && !seenNames.add(name)) {
-          duplicated++;
-          continue;
-        }
         chunk.add(toParams(row, col));
         parsed++;
         if (chunk.size() >= chunkSize) {
@@ -137,8 +131,8 @@ public class GameCsvSeedRunner implements ApplicationRunner {
       executor.shutdown();
     }
 
-    log.info("게임 CSV 시드 완료: 파싱 {}건, 삽입 {}건, 이름 중복 제외 {}건, 건너뜀 {}건, {}ms",
-        parsed, inserted.get(), duplicated, skipped, System.currentTimeMillis() - started);
+    log.info("게임 CSV 시드 완료: 파싱 {}건, 삽입 {}건(이미 있던 app_id 제외), 건너뜀 {}건, {}ms",
+        parsed, inserted.get(), skipped, System.currentTimeMillis() - started);
   }
 
   private Future<?> submit(ExecutorService executor, List<Object[]> chunk, AtomicLong inserted) {

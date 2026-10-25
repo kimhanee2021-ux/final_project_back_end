@@ -23,7 +23,7 @@ public enum InsightTopic {
           + "최근 플레이와 오래 안 한 게임을 비교하고 다음에 해 볼 보유 게임을 추천할 수 있습니다."),
   BUDGET("budget", "예산·환불", true,
       "예산·환불: 이번 달 지출과 예산(thisMonth), 환불할 수 있는 게임(refundableGames: 구매 후 14일 안, 플레이 2시간 미만)을 짚으세요. "
-          + "예산이 없으면 예산을 정해 두면 남은 금액을 알려 줄 수 있다고 안내하세요.");
+          + "thisMonth.budget에 예산을 정하지 않았다고 적혀 있으면 예산 숫자는 쓰지 말고, 예산을 정해 두면 남은 금액을 알려 줄 수 있다고 안내하세요.");
 
   private final String key;
   private final String label;

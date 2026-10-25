@@ -68,7 +68,9 @@ public class GroqCoachModel implements CoachModel {
       if (CoachModel.isServerBusy(response.statusCode())) {
         throw AiCoachException.busy();
       }
-      if (response.statusCode() == 429) {
+      // 413: 요청 하나가 분당 토큰 한도(무료 키 8,000)보다 커서 받지 못함. 보유 게임이 많은 회원의 AI 분석에서 난다.
+      // 한도 문제라 다른 공급자로 넘기면 해결되므로 429와 똑같이 알린다
+      if (response.statusCode() == 429 || response.statusCode() == 413) {
         throw AiCoachException.tooManyRequests();
       }
       if (response.statusCode() == 401 || response.statusCode() == 403 || response.statusCode() == 404) {

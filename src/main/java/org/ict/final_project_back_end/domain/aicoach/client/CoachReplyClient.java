@@ -84,15 +84,15 @@ public class CoachReplyClient implements CoachAiClient {
       JSON {"answer": string, "recommendations": [{"appId": string, "reason": string}]} 형식으로만 답하세요.
       """;
 
-  private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
-      "type", "object",
-      "properties", Map.of(
-          "answer", Map.of("type", "string"),
-          "recommendations", Map.of("type", "array", "maxItems", MAX_RECOMMENDATIONS,
-              "items", Map.of("type", "object",
-                  "properties", Map.of("appId", Map.of("type", "string"), "reason", Map.of("type", "string")),
-                  "required", List.of("appId", "reason")))),
-      "required", List.of("answer", "recommendations"));
+  // recommendations의 appId는 이 회원의 보유 게임 번호 중에서만 고르게 해야 해서 요청마다 만든다
+  static Map<String, Object> responseSchema(Map<String, Object> facts) {
+    return Map.of(
+        "type", "object",
+        "properties", Map.of(
+            "answer", Map.of("type", "string"),
+            "recommendations", RecommendationSchema.of(facts, MAX_RECOMMENDATIONS)),
+        "required", List.of("answer", "recommendations"));
+  }
 
   private final CoachModelRouter router;
   private final List<String> providers;
@@ -122,7 +122,7 @@ public class CoachReplyClient implements CoachAiClient {
     }
     // facts와 질문을 한 메시지에 JSON으로 넣어, 질문 문장이 규칙처럼 읽히지 않게 구분한다
     messages.add(new CoachModel.Message("user", json.writeValueAsString(Map.of("facts", facts, "question", message))));
-    return new CoachModel.Request(SYSTEM_PROMPT, messages, RESPONSE_SCHEMA, 0.1, 2048);
+    return new CoachModel.Request(SYSTEM_PROMPT, messages, responseSchema(facts), 0.1, 2048);
   }
 
   // 모델이 만든 JSON 문자열에서 {answer, recommendations}를 꺼낸다. 형식이 틀리면 예외

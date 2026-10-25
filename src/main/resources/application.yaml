@@ -63,6 +63,8 @@ app:
       enabled: ${SEED_GAMES_ENABLED:false}
       chunk-size: ${SEED_GAMES_CHUNK_SIZE:2000}
       writer-threads: ${SEED_GAMES_WRITER_THREADS:4}
+      #이미 데이터가 있어도 CSV에서 빠진 app_id만 채운다 (enabled와 같이 켜서 한 번만 쓴다)
+      fill-missing: ${SEED_GAMES_FILL_MISSING:false}
     #(선택, 개발용) games 전체의 원화 가격 미리 받기. 보유 게임 가격은 소비 분석 조회 때 자동으로 채워지므로 기본 false
     prices:
       enabled: ${SEED_PRICES_ENABLED:false}
@@ -82,6 +84,8 @@ app:
     # 화면마다 먼저 쓸 공급자 순서. 앞 공급자가 혼잡·한도 초과·미설정이면 다음 공급자로 넘어간다
     # Groq 무료 키는 분당 8,000토큰이라 코치 요청을 1분에 2번 정도만 받고, PC 진단과 같은 키를 쓴다.
     # 그래서 기본은 둘 다 Gemini 먼저, Groq는 예비로 둔다 (Groq를 유료로 바꾸면 순서만 바꾸면 된다)
+    # AI 분석 요청은 보유 게임 목록까지 담겨 무료 키 한도보다 커서 Groq가 413으로 거절한다 (2026-10 실측: 실제 회원 모두).
+    # Groq를 먼저 두면 매번 거절당한 뒤 Gemini로 넘어가 0.2초만 늘어나므로 Gemini를 먼저 쓴다.
     chat-providers: ${COACH_CHAT_PROVIDERS:gemini,groq}
     insight-providers: ${COACH_INSIGHT_PROVIDERS:gemini,groq}
   #스팀 featured/featuredcategories 캐시를 매일 다시 받는 시각 (기본: 매일 새벽 4시 10분, KST)
@@ -89,6 +93,13 @@ app:
     sync-cron: ${FEATURED_SYNC_CRON:0 10 4 * * *}
     #서버 기동 시에도 바로 한 번 받아 둘지 여부 (개발 환경에서 새벽 스케줄까지 기다리지 않고 바로 확인하고 싶을 때)
     sync-on-startup: ${FEATURED_SYNC_ON_STARTUP:true}
+  #AI 게임 추천 - FastAPI 추천 서버 주소. 인증 없는 내부 서버라 프론트가 아니라 스프링만 부른다
+  recommend:
+    base-url: ${RECOMMEND_API_URL:http://localhost:8000}
+    timeout-seconds: ${RECOMMEND_TIMEOUT_SECONDS:30}
+  #AI 게임 검색 - 사용자 문장을 영어 검색 키워드로 바꾸는 GPT 모델 (키는 .env의 OPENAI_API_KEY). 검색 모델 주소는 위 recommend.base-url을 같이 쓴다
+  ai-search:
+    model: ${OPENAI_SEARCH_MODEL:gpt-5.4-mini}
 
 board:
   images:

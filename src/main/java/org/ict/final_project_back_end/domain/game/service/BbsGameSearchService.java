@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class BbsGameSearchService {
   private final GameRepository games;
+  // 별명 테이블이 없는 DB에서는 게임 이름만으로 찾는다 (없는 테이블을 조회해 500이 나지 않게)
+  private final GameSearchNameTable aliases;
 
-  public BbsGameSearchService(GameRepository games) { this.games = games; }
+  public BbsGameSearchService(GameRepository games, GameSearchNameTable aliases) { this.games = games; this.aliases = aliases; }
 
   public BbsGameResponse.Search search(String input, int limit) {
     String query = GameNameNormalizer.query(input);
@@ -22,8 +24,10 @@ public class BbsGameSearchService {
       long candidate = Long.parseLong(query);
       if (candidate > 0 && candidate <= 0xffffffffL) appId = candidate;
     }
-    var rows = games.searchForBbs(query, "%" + GameNameNormalizer.escapeLike(query) + "%",
-        appId, PageRequest.of(0, limit + 1));
+    String pattern = "%" + GameNameNormalizer.escapeLike(query) + "%";
+    var rows = aliases.available()
+        ? games.searchForBbs(query, pattern, appId, PageRequest.of(0, limit + 1))
+        : games.searchForBbsByName(query, pattern, appId, limit + 1);
     return new BbsGameResponse.Search(query,
         rows.stream().limit(limit).map(BbsGameResponse::from).toList(), rows.size() > limit);
   }
@@ -39,6 +43,7 @@ public class BbsGameSearchService {
     if(query.matches("[0-9]{1,10}")) {
       long number=Long.parseLong(query);if(number>0 && number<=0xffffffffL) appId=number;
     }
-    return games.findExactForBbs(query,appId,PageRequest.of(0,2)).stream().map(BbsGameResponse::from).toList();
+    var rows = aliases.available() ? games.findExactForBbs(query,appId,PageRequest.of(0,2)) : games.findExactForBbsByName(query,appId);
+    return rows.stream().map(BbsGameResponse::from).toList();
   }
 }

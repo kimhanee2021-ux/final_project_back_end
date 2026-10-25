@@ -65,7 +65,26 @@ public final class CoachFactsBuilder {
     }
     facts.put("playingRecently", recent(games));
     facts.put("ownedGames", ownedGames(games));
-    return facts;
+    return withoutEmpty(facts);
+  }
+
+  // 값이 없는(null) 칸은 AI에게 보여주지 않는다. 빈 칸이 보이면 AI가 {{ownedGames.606150.amountKrw}}처럼 가리켜
+  // 숫자 확인에 실패하고, 다시 묻다가 결과를 버린다 (금액 없는 무료 게임, 예산 안 정한 회원에서 실제로 난 실패)
+  @SuppressWarnings("unchecked")
+  static <T> T withoutEmpty(T value) {
+    if (value instanceof Map<?, ?> map) {
+      Map<Object, Object> result = new LinkedHashMap<>();
+      map.forEach((key, item) -> {
+        if (item != null) {
+          result.put(key, withoutEmpty(item));
+        }
+      });
+      return (T) result;
+    }
+    if (value instanceof List<?> list) {
+      return (T) list.stream().filter(java.util.Objects::nonNull).map(CoachFactsBuilder::withoutEmpty).toList();
+    }
+    return value;
   }
 
   static int net(SpendingGameResponse game) {
@@ -275,12 +294,21 @@ public final class CoachFactsBuilder {
           .filter(t -> t.purchasedAt().toString().startsWith(month))
           .mapToInt(SpendingAnalysisResponse.PurchaseView::amountKrw).sum());
     }
-    result.put("spentKrw", spent);
-    Integer limit = budget == null ? null : budget.limitAmount();
-    result.put("budgetKrw", limit);
-    result.put("remainingBudgetKrw", limit != null && spent != null ? limit - spent : null);
-    if (spent == null) {
+    // 값이 없는 숫자 칸은 넣지 않는다. 빈 칸이 있으면 AI가 {{thisMonth.budgetKrw}}처럼 가리켜서 숫자 확인에 실패하고
+    // 다시 묻다가 결국 결과를 버린다 (예산 안 정한 회원의 예산·환불 분석이 매번 실패하던 원인)
+    if (spent != null) {
+      result.put("spentKrw", spent);
+    } else {
       result.put("note", "구매내역을 가져오지 않아 이번 달 실제 지출을 알 수 없음");
+    }
+    Integer limit = budget == null ? null : budget.limitAmount();
+    if (limit != null) {
+      result.put("budgetKrw", limit);
+      if (spent != null) {
+        result.put("remainingBudgetKrw", limit - spent);
+      }
+    } else {
+      result.put("budget", "이번 달 예산을 아직 정하지 않음 (예산·남은 예산 숫자는 없음)");
     }
     return result;
   }

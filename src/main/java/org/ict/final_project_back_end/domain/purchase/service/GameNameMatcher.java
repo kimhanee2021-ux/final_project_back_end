@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 //   2) 내 보유 게임과 이름이 같으면 그 게임
 //   3) 보유 게임 이름 + 구분자(": ", " - ")로 시작하면 DLC 후보 -> 스팀에서 DLC이고 본편이 그 게임인지 확인되면 본편에 연결
 //      (이름 앞부분만 같은 속편/시리즈는 묶지 않는다: Hollow Knight: Silksong은 별도 게임)
-//   4) 게임 목록(games)에 같은 이름이 있으면 그 게임
+//   4) 게임 목록(games)에 같은 이름이 있으면 그 게임 (이름만 같은 다른 게임이 여럿이면 추천 수가 가장 많은 게임)
 //   5) 스팀 상점 검색으로 이름이 정확히 같은 상품을 찾음 (보유 게임의 DLC면 본편에 연결)
 //   6) 못 찾으면 UNMATCHED
 // 스팀 호출(3, 5)은 가져오기 한 번에 쓸 수 있는 횟수(Budget)를 넘지 않는다.
@@ -97,7 +97,8 @@ public class GameNameMatcher {
     if (suffixMatch != null) {
       return Match.matched(suffixMatch);
     }
-    Long catalogAppId = gameRepository.findFirstByNameIgnoreCase(rawName.trim()).map(g -> g.getAppId()).orElse(null);
+    Long catalogAppId = gameRepository.findFirstByNameIgnoreCaseOrderByRecommendationsDesc(rawName.trim())
+        .map(g -> g.getAppId()).orElse(null);
     if (catalogAppId != null) {
       return Match.matched(catalogAppId);
     }

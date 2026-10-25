@@ -7,6 +7,7 @@ import org.ict.final_project_back_end.domain.budget.dto.BudgetResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -224,6 +225,36 @@ class CoachFactsBuilderTest {
     assertNull(month.get("spentKrw"));
     assertNull(month.get("remainingBudgetKrw"));
     assertTrue(((String) facts.get("amountBasis")).contains("정가"));
+  }
+
+  @Test
+  void emptyValuesAreRemovedEverywhereSoAiCannotPointAtThem() {
+    Map<String, Object> nested = new LinkedHashMap<>();
+    nested.put("amountKrw", null);
+    nested.put("name", "Free Game");
+    Map<String, Object> facts = new LinkedHashMap<>();
+    facts.put("ownedGames", Map.of("606150", nested));
+    facts.put("list", java.util.Arrays.asList(nested, null));
+    facts.put("none", null);
+
+    Map<String, Object> cleaned = CoachFactsBuilder.withoutEmpty(facts);
+
+    assertFalse(cleaned.containsKey("none"));
+    Map<String, Map<String, Object>> owned = get(cleaned, "ownedGames");
+    assertEquals(Map.of("name", "Free Game"), owned.get("606150"));
+    List<Map<String, Object>> list = get(cleaned, "list");
+    assertEquals(List.of(Map.of("name", "Free Game")), list);
+  }
+
+  @Test
+  void noBudgetLeavesNoEmptyNumberSlotsForAi() {
+    Map<String, Object> facts = CoachFactsBuilder.build(history(games, List.of()), null, TODAY);
+    Map<String, Object> month = get(facts, "thisMonth");
+    // 빈 칸을 남기면 AI가 {{thisMonth.budgetKrw}}를 써서 숫자 확인에 실패하므로 칸 자체가 없어야 한다
+    assertFalse(month.containsKey("budgetKrw"));
+    assertFalse(month.containsKey("remainingBudgetKrw"));
+    assertTrue(((String) month.get("budget")).contains("정하지 않음"));
+    assertEquals(0, month.get("spentKrw"));
   }
 
   @Test
