@@ -2,7 +2,7 @@ package org.ict.final_project_back_end.domain.gamenews;
 
 import jakarta.persistence.EntityManager;
 import java.util.*;
-import org.ict.final_project_back_end.domain.game.entity.*;
+import org.ict.final_project_back_end.domain.game.entity.Game;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
 import org.ict.final_project_back_end.domain.game.service.BbsGameSearchService;
 import org.ict.final_project_back_end.domain.gamenews.client.BbsCommandClient;
@@ -30,30 +30,22 @@ class BbsCommandIntegrationTest {
   static final long APP=4200096001L;
   static final String URL="/api/games/bbs/voice/commands";
   @BeforeEach void setup() {
-    var game=games.save(Game.builder().appId(APP).name("Voice Fixture 2").aboutTheGame("KEEP EXISTING DATA").build());
-    games.save(Game.builder().appId(APP+1).name("Voice Fixture Workshop").build());
-    em.persist(new GameSearchName(game,"음성 테스트 게임","음성 테스트 게임",GameSearchName.Kind.ALIAS,"test"));em.flush();
+    games.save(Game.builder().appId(APP).name("Voice Fixture 2").aboutTheGame("KEEP EXISTING DATA").build());
+    games.save(Game.builder().appId(APP+1).name("Voice Fixture Workshop").build());em.flush();
     when(client.configured()).thenReturn(true);when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"Voice Fixture 2"));
   }
   org.springframework.test.web.servlet.ResultActions command() throws Exception { return mvc.perform(post(URL).contentType("application/json").content("{\"transcript\":\"음성 테스트 게임 최신 소식 들려줘\"}")); }
-  @Test void resolvesExactTitleAndKoreanAliasWithoutChangingCatalog() throws Exception {
+  @Test void resolvesExactTitleWithoutChangingCatalog() throws Exception {
     long count=games.count();command().andExpect(status().isOk()).andExpect(jsonPath("$.status").value("RESOLVED"))
         .andExpect(header().string("Cache-Control","no-store")).andExpect(jsonPath("$.game.appId").value(APP));
-    when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"음성 테스트 게임"));
-    command().andExpect(jsonPath("$.game.appId").value(APP));em.flush();em.clear();
+    em.flush();em.clear();
     assertEquals(count,games.count());assertEquals("KEEP EXISTING DATA",games.findById(APP).orElseThrow().getAboutTheGame());
   }
-  @Test void ambiguousPartialNamesAndDuplicateAliasesRequireSelection() throws Exception {
+  @Test void ambiguousPartialNamesRequireSelection() throws Exception {
     when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"Voice Fixture"));
     command().andExpect(jsonPath("$.status").value("CHOOSE_GAME")).andExpect(jsonPath("$.candidates.length()").value(2)).andExpect(jsonPath("$.game").doesNotExist());
-    em.persist(new GameSearchName(games.findById(APP+1).orElseThrow(),"음성 테스트 게임","음성 테스트 게임",GameSearchName.Kind.ALIAS,"test"));em.flush();
-    when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"음성 테스트 게임"));
-    command().andExpect(jsonPath("$.status").value("CHOOSE_GAME")).andExpect(jsonPath("$.candidates.length()").value(2));
   }
-  @Test void inactiveAliasesAndMissingGamesAreNotResolved() throws Exception {
-    em.createNativeQuery("update game_search_names set active=false where app_id=:id").setParameter("id",APP).executeUpdate();
-    when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"음성 테스트 게임"));
-    command().andExpect(jsonPath("$.status").value("NOT_FOUND"));
+  @Test void missingGamesAreNotResolved() throws Exception {
     when(client.interpret(anyString())).thenReturn(new Intent(Action.LATEST_BRIEFING,"no-such-voice-game-xyz"));command().andExpect(jsonPath("$.status").value("NOT_FOUND"));
   }
   @Test void bareSeriesTitleDoesNotAutomaticallySelectOlderExactTitleWhenSequelAlsoMatches() throws Exception {

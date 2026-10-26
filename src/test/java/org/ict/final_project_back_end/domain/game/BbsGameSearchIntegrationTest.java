@@ -3,8 +3,9 @@ package org.ict.final_project_back_end.domain.game;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.ict.final_project_back_end.domain.game.entity.Game;
-import org.ict.final_project_back_end.domain.game.entity.GameSearchName;
+import org.ict.final_project_back_end.domain.game.service.GameSearchException;
 import org.ict.final_project_back_end.domain.game.repository.GameRepository;
+import org.ict.final_project_back_end.domain.game.service.BbsGameSearchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,17 +18,20 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+// BBS 게임 검색: 음성 명령(BbsCommandService)이 쓰는 이름 검색은 서비스로 검증하고,
+// 화면이 쓰는 게임 선택 주소(/api/games/bbs/{appId})는 HTTP로 검증한다.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class BbsGameSearchIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired GameRepository games;
+  @Autowired BbsGameSearchService search;
   @Autowired EntityManager em;
   private static final long DOTA = 4200000001L;
 
   @BeforeEach void fixtures() {
-    var dota = games.save(Game.builder().appId(DOTA).name("Dota 2").genre("Action,Strategy")
+    games.save(Game.builder().appId(DOTA).name("Dota 2").genre("Action,Strategy")
         .thumbnailUrl("https://example.invalid/dota.jpg").aboutTheGame("KEEP CATALOG CONTENT")
         .shortDescription("KEEP SHORT DESCRIPTION").build());
     games.saveAll(List.of(
@@ -35,50 +39,42 @@ class BbsGameSearchIntegrationTest {
         Game.builder().appId(DOTA + 2).name("100% Match").build(),
         Game.builder().appId(DOTA + 3).name("A_B Adventure").build(),
         Game.builder().appId(DOTA + 4).name("A!B Adventure").build()));
-    em.persist(new GameSearchName(dota, "도타 2", "도타 2", GameSearchName.Kind.ALIAS, "test"));
-    em.persist(new GameSearchName(dota, "도타 투", "도타 투", GameSearchName.Kind.ALIAS, "test"));
     em.flush();
   }
 
-  @Test void publicAliasSearchDeduplicatesAndDoesNotModifyCatalog() throws Exception {
+  @Test void nameSearchDoesNotModifyCatalog() {
     long before = games.count();
-    mvc.perform(get("/api/games/bbs/search").param("q", "도타"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1))
-        .andExpect(jsonPath("$.content[0].appId").value(DOTA))
-        .andExpect(jsonPath("$.content[0].name").value("Dota 2"))
-        .andExpect(jsonPath("$.content[0].aboutTheGame").doesNotExist())
-        .andExpect(jsonPath("$.hasMore").value(false));
+    var result = search.search("dota 2 w", 12);
+    assertEquals(1, result.content().size());
+    assertEquals(DOTA + 1, result.content().get(0).appId());
+    result = search.search("dota 2", 1);
+    assertEquals(DOTA, result.content().get(0).appId());
+    assertEquals("Dota 2", result.content().get(0).name());
     em.flush(); em.clear();
     assertEquals(before, games.count());
     assertEquals("KEEP CATALOG CONTENT", games.findById(DOTA).orElseThrow().getAboutTheGame());
     assertEquals("KEEP SHORT DESCRIPTION", games.findById(DOTA).orElseThrow().getShortDescription());
   }
 
-  @Test void unicodeAndCaseNormalizationKeepExactNameFirst() throws Exception {
-    mvc.perform(get("/api/games/bbs/search").param("q", "  ＤＯＴＡ　２  ").param("limit", "1"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.query").value("dota 2"))
-        .andExpect(jsonPath("$.content[0].appId").value(DOTA))
-        .andExpect(jsonPath("$.content.length()").value(1)).andExpect(jsonPath("$.hasMore").value(true));
+  @Test void unicodeAndCaseNormalizationKeepExactNameFirst() {
+    var result = search.search("  ＤＯＴＡ　２  ", 1);
+    assertEquals("dota 2", result.query());
+    assertEquals(DOTA, result.content().get(0).appId());
+    assertEquals(1, result.content().size());
+    assertTrue(result.hasMore());
   }
 
-  @Test void literalWildcardsDoNotReturnTheWholeCatalog() throws Exception {
+  @Test void literalWildcardsDoNotReturnTheWholeCatalog() {
     for (var entry : List.of(new String[]{"%", "100% Match"}, new String[]{"_", "A_B Adventure"}, new String[]{"!", "A!B Adventure"})) {
-      mvc.perform(get("/api/games/bbs/search").param("q", entry[0]))
-          .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1))
-          .andExpect(jsonPath("$.content[0].name").value(entry[1]));
+      var result = search.search(entry[0], 12);
+      assertEquals(1, result.content().size());
+      assertEquals(entry[1], result.content().get(0).name());
     }
   }
 
-  @Test void inactiveAliasesAreNotUsed() throws Exception {
-    em.createNativeQuery("update game_search_names set active = false where app_id = :id")
-        .setParameter("id", DOTA).executeUpdate();
-    mvc.perform(get("/api/games/bbs/search").param("q", "도타"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(0));
-  }
 
   @Test void appIdSearchAndSelectionReturnTheSameGame() throws Exception {
-    mvc.perform(get("/api/games/bbs/search").param("q", Long.toString(DOTA)))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].appId").value(DOTA));
+    assertEquals(DOTA, search.search(Long.toString(DOTA), 12).content().get(0).appId());
     mvc.perform(get("/api/games/bbs/" + DOTA))
         .andExpect(status().isOk()).andExpect(jsonPath("$.appId").value(DOTA))
         .andExpect(jsonPath("$.genre").value("Action,Strategy"))
@@ -87,23 +83,21 @@ class BbsGameSearchIntegrationTest {
         .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("GAME_NOT_FOUND"));
   }
 
-  @Test void noResultsRemainAValidResponse() throws Exception {
-    mvc.perform(get("/api/games/bbs/search").param("q", "no-match-bbs04-xyz"))
-        .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(0))
-        .andExpect(jsonPath("$.hasMore").value(false));
+  @Test void noResultsRemainAValidResponse() {
+    var result = search.search("no-match-bbs04-xyz", 12);
+    assertEquals(0, result.content().size());
+    assertFalse(result.hasMore());
   }
 
-  @Test void rejectsBlankOversizeAndControlCharacterQueries() throws Exception {
+  @Test void rejectsBlankOversizeAndControlCharacterQueries() {
     for (String query : List.of("", "   ", "a".repeat(256), "Dota\u0000")) {
-      mvc.perform(get("/api/games/bbs/search").param("q", query))
-          .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_GAME_SEARCH"));
+      assertThrows(GameSearchException.class, () -> search.search(query, 12), query);
     }
   }
 
   @Test void validatesLimitsAndAppIds() throws Exception {
-    for (String limit : List.of("0", "21", "no-number")) {
-      mvc.perform(get("/api/games/bbs/search").param("q", "dota").param("limit", limit))
-          .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_GAME_SEARCH"));
+    for (int limit : List.of(0, 21)) {
+      assertThrows(GameSearchException.class, () -> search.search("dota", limit));
     }
     for (String id : List.of("0", "-1", "4294967296", "not-a-number")) {
       mvc.perform(get("/api/games/bbs/" + id)).andExpect(status().isBadRequest());

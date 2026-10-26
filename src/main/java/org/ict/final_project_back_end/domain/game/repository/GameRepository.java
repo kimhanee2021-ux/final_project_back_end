@@ -36,26 +36,7 @@ public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificat
     String getThumbnailUrl();
   }
 
-  // EXISTS prevents duplicate results when a game has several matching aliases.
-  // Scalar projection avoids loading TEXT columns or counting the entire catalog.
-  @Query("""
-      select g.appId as appId, g.name as name, g.genre as genre, g.thumbnailUrl as thumbnailUrl
-      from Game g
-      where g.appId = :appId or lower(g.name) like :pattern escape '!'
-         or exists (select n.id from GameSearchName n where n.game = g and n.active = true
-                    and n.normalizedName like :pattern escape '!')
-      order by case when g.appId = :appId then 0
-                    when lower(g.name) = :query then 1
-                    when exists (select a.id from GameSearchName a where a.game = g and a.active = true
-                                 and a.normalizedName = :query) then 2 else 3 end,
-               g.name, g.appId
-      """)
-  @org.springframework.data.jpa.repository.QueryHints(
-      @jakarta.persistence.QueryHint(name = "jakarta.persistence.query.timeout", value = "3000"))
-  List<BbsGameRow> searchForBbs(@Param("query") String query, @Param("pattern") String pattern,
-      @Param("appId") Long appId, Pageable pageable);
-
-  // 별명 테이블(game_search_names)이 없는 DB용 searchForBbs: 게임 이름만으로 찾는다 (순서 규칙은 같다).
+  // BBS 게임 검색: 게임 번호가 같으면 먼저, 이름이 정확히 같으면 다음, 이름에 검색어가 들어가면 그다음 순서로 찾는다.
   // 안쪽 쿼리가 name 인덱스(docs/db/games-name-index.sql)만 훑어 번호를 고르고, 고른 행에만 나머지 칸을 붙인다.
   // 그냥 games를 훑으면 큰 TEXT 칸까지 읽어 약 3초가 걸려 쿼리 제한 시간(3초)에 걸린다 (인덱스로 0.03초, 2026-10 측정).
   // 컬럼 콜레이션(ai_ci)이라 대소문자는 구분하지 않는다.
@@ -72,7 +53,7 @@ public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificat
   List<BbsGameRow> searchForBbsByName(@Param("query") String query, @Param("pattern") String pattern,
       @Param("appId") Long appId, @Param("limit") int limit);
 
-  // 별명 테이블이 없는 DB용 findExactForBbs: 게임 번호나 이름이 정확히 같은 게임 (name 인덱스로 바로 찾는다)
+  // 말한 게임 이름을 하나로 정할 때: 게임 번호나 이름이 정확히 같은 게임 (name 인덱스로 바로 찾는다)
   @Query(value = """
       SELECT app_id AS appId, name AS name, genre AS genre, thumbnail_url AS thumbnailUrl
       FROM games WHERE app_id = :appId OR name = :query ORDER BY app_id LIMIT 2
@@ -82,14 +63,4 @@ public interface GameRepository extends JpaRepository<Game, Long>, JpaSpecificat
   @Query("select g.appId as appId, g.name as name, g.genre as genre, g.thumbnailUrl as thumbnailUrl from Game g where g.appId = :appId")
   Optional<BbsGameRow> findForBbs(@Param("appId") long appId);
 
-  // Resolve a spoken title only when exactly one existing game or active alias matches.
-  @Query("""
-      select g.appId as appId, g.name as name, g.genre as genre, g.thumbnailUrl as thumbnailUrl
-      from Game g where g.appId = :appId or lower(g.name) = :query
-         or exists (select n.id from GameSearchName n where n.game = g and n.active = true and n.normalizedName = :query)
-      order by g.appId
-      """)
-  @org.springframework.data.jpa.repository.QueryHints(
-      @jakarta.persistence.QueryHint(name = "jakarta.persistence.query.timeout", value = "3000"))
-  List<BbsGameRow> findExactForBbs(@Param("query") String query,@Param("appId") Long appId,Pageable pageable);
 }

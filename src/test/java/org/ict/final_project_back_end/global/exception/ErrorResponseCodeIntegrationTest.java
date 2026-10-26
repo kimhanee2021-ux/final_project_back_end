@@ -97,10 +97,10 @@ class ErrorResponseCodeIntegrationTest {
         .andExpect(jsonPath("$.error").value("스팀 계정이 연동되어 있지 않습니다"));
   }
 
-  @Test void boardNotFound() throws Exception {
-    mvc.perform(get("/api/board/999999").header("Authorization", signup()))
+  @Test void gameNotFound() throws Exception {
+    mvc.perform(get("/api/games/bbs/4294967295"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.code").value("BOARD_POST_NOT_FOUND"));
+        .andExpect(jsonPath("$.code").value("GAME_NOT_FOUND"));
   }
 
   @Test void constraintViolationIsValidationError() {
@@ -109,13 +109,6 @@ class ErrorResponseCodeIntegrationTest {
     assertEquals("VALIDATION_ERROR", response.getBody().code());
   }
 
-  @Test void requestBodyValidationIsValidationError() throws Exception {
-    mvc.perform(post("/api/board").header("Authorization", signup()).contentType("application/json")
-            .content("{\"category\":\"TEST\",\"title\":\"\",\"content\":\"내용\",\"isAnonymous\":false}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-        .andExpect(jsonPath("$.errors.title").exists());
-  }
 
   @Test void authenticationRequiredIsUnauthenticated() {
     var response = handler.handleBusinessException(new AuthenticationRequiredException());
