@@ -46,7 +46,7 @@ public class UserServiceImpl implements UserService {
     return UserResponse.from(findUser(userId));
   }
 
-  // 변경 감지(dirty checking)로 저장되므로 별도 save 호출은 하지 않는다.
+
   @Override
   @Transactional
   public UserResponse updateUserInfo(Long userId, UserUpdateRequest request) {
@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
       if (isBlank(request.newPassword())) {
         throw new InvalidRequestException("새 비밀번호를 입력해주세요");
       }
-      // 토큰만 탈취당한 경우 비밀번호가 바뀌지 않도록 현재 비밀번호를 한 번 더 확인한다
+
       if (isBlank(request.currentPassword())) {
         throw new InvalidRequestException("현재 비밀번호를 입력해주세요");
       }
@@ -81,7 +81,7 @@ public class UserServiceImpl implements UserService {
     return UserResponse.from(user);
   }
 
-  // LibraryGame, 가져온 구매내역(purchase_transactions)과 라이선스(game_licenses)가 users를 FK로 참조하므로 먼저 지워야 사용자 삭제가 성공한다.
+
   @Override
   @Transactional
   public void deleteUser(Long userId) {
@@ -94,8 +94,7 @@ public class UserServiceImpl implements UserService {
     userRepository.delete(user);
   }
 
-  // 연동하지 않은 상태에서 불러도 같은 결과(해제됨)이므로 예외를 던지지 않는다.
-  // 보유 게임(library_games)은 연동한 스팀 계정에서 받아 온 사본이라 함께 지운다. 다시 연동하면 동기화로 채워진다.
+
   @Override
   @Transactional
   public void unlinkSteam(Long userId) {
